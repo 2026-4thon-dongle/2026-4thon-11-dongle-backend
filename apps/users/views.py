@@ -1,4 +1,5 @@
-from typing import Any
+from functools import partial
+from typing import Any, cast
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
@@ -22,10 +23,14 @@ from .serializers import (
     EmailSendSerializer,
     EmailVerifySerializer,
     LogoutSerializer,
+    MeSerializer,
     NicknameCheckSerializer,
+    NicknameUpdateSerializer,
+    RegionSelectionSerializer,
     SignupResultSerializer,
     SignupSerializer,
     UserSerializer,
+    UserSettingsSerializer,
     VerifyResultSerializer,
     validate_nickname,
 )
@@ -60,12 +65,13 @@ class EmailSendView(APIView):
             )
 
         sent = verification.send_code(email, purpose)
-        return Response(
+        result = EmailSendResultSerializer(
             {
                 "expires_at": sent.expires_at,
                 "resend_available_seconds": int(verification.RESEND_INTERVAL.total_seconds()),
             }
         )
+        return Response(result.data)
 
 
 class EmailVerifyView(APIView):
@@ -151,3 +157,67 @@ class LogoutView(APIView):
         except TokenError as exc:
             raise ApiError("INVALID_REFRESH_TOKEN", "유효하지 않은 토큰입니다.") from exc
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MeView(APIView):
+    @extend_schema(responses={200: MeSerializer})
+    def get(self, request: Request) -> Response:
+        return Response(MeSerializer(cast(User, request.user)).data)
+
+    @extend_schema(request=NicknameUpdateSerializer, responses={200: MeSerializer})
+    def patch(self, request: Request) -> Response:
+        user = cast(User, request.user)
+        serializer = NicknameUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user.nickname = validate_nickname(
+            serializer.validated_data["nickname"], exclude_user_id=user.pk
+        )
+        try:
+            with transaction.atomic():
+                user.save(update_fields=["nickname"])
+        except IntegrityError as exc:
+            raise ApiError(
+                "NICKNAME_TAKEN", "이미 사용 중인 닉네임입니다.", status.HTTP_409_CONFLICT
+            ) from exc
+        return Response(MeSerializer(user).data)
+
+    @extend_schema(responses={204: None})
+    def delete(self, request: Request) -> Response:
+        """탈퇴하면 일기·우표 등 소유 데이터를 함께 지운다 (AUTH-11)."""
+        user = cast(User, request.user)
+        images = [diary.image for diary in user.diaries.exclude(image="").exclude(image=None)]
+        with transaction.atomic():
+            for image in images:
+                storage, name = image.storage, str(image.name)
+                transaction.on_commit(partial(storage.delete, name))
+            user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MyRegionsView(APIView):
+    @extend_schema(request=RegionSelectionSerializer, responses={200: MeSerializer})
+    def put(self, request: Request) -> Response:
+        """이미 쓴 일기의 지역은 바뀌지 않는다 (SET-07)."""
+        user = cast(User, request.user)
+        serializer = RegionSelectionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            user.residence = serializer.validated_data["residence_region_id"]
+            user.save(update_fields=["residence"])
+            user.hometowns.set(serializer.validated_data["hometown_region_ids"])
+        return Response(MeSerializer(user).data)
+
+
+class MySettingsView(APIView):
+    @extend_schema(responses={200: UserSettingsSerializer})
+    def get(self, request: Request) -> Response:
+        return Response(UserSettingsSerializer(cast(User, request.user)).data)
+
+    @extend_schema(request=UserSettingsSerializer, responses={200: UserSettingsSerializer})
+    def patch(self, request: Request) -> Response:
+        serializer = UserSettingsSerializer(
+            cast(User, request.user), data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

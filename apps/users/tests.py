@@ -9,8 +9,11 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.diaries.models import Diary
+from apps.moderations.models import Report
 from apps.regions.models import Region
 from apps.stamps.models import UserStamp
+from apps.stamps.services import FIRST_STEP, grant_stamp
 
 from .models import EmailVerification, TermsAgreement, User
 
@@ -73,7 +76,9 @@ class EmailCodeTests(AuthTestCase):
         self.assertEqual(self.send("someone@ac.kr.evil.com").data["code"], "INVALID_SCHOOL_EMAIL")
 
     def test_code_is_not_stored_in_plain_text(self) -> None:
-        self.assertEqual(self.send().status_code, 200)
+        response = self.send()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["expires_at"].endswith("+09:00"))
         stored = EmailVerification.objects.get(email=NORMALIZED_EMAIL)
         self.assertNotIn(self.last_code(), stored.code_hash)
 
@@ -216,3 +221,79 @@ class LoginLogoutTests(AuthTestCase):
             reverse("auth-logout"), {"refresh": str(RefreshToken.for_user(other))}, format="json"
         )
         self.assertEqual(response.data["code"], "INVALID_REFRESH_TOKEN")
+
+
+class MeTests(TestCase):
+    def setUp(self) -> None:
+        self.user = make_user()
+        self.client: APIClient = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_me_requires_login(self) -> None:
+        response = APIClient().get(reverse("me"))
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data["code"], "NOT_AUTHENTICATED")
+
+    def test_me_profile_and_stats(self) -> None:
+        grant_stamp(self.user, FIRST_STEP)
+        response = self.client.get(reverse("me"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["hometowns"][0]["name"], "서울특별시")
+        self.assertTrue(response.data["school_verified"])
+        self.assertEqual(response.data["stats"]["stamp_count"], 1)
+        self.assertEqual(response.data["stats"]["diary_count"], 0)
+
+    def test_nickname_change(self) -> None:
+        make_user("b@skuniv.ac.kr", "사용중")
+        url = reverse("me")
+        self.assertEqual(self.client.patch(url, {"nickname": "사용중"}).status_code, 409)
+        self.assertEqual(self.client.patch(url, {"nickname": "가"}).status_code, 400)
+        self.assertEqual(self.client.patch(url, {"nickname": "민호"}).status_code, 200)
+        self.assertEqual(self.client.patch(url, {"nickname": "새이름"}).data["nickname"], "새이름")
+
+    def test_region_update_keeps_old_diary_region(self) -> None:
+        diary = Diary.objects.create(author=self.user, region=regions()[1], body="x")
+        gu = Region.objects.get(parent__name="서울특별시", name="성북구")
+        busan = Region.objects.get(name="부산광역시")
+        response = self.client.put(
+            reverse("me-regions"),
+            {"hometown_region_ids": [busan.id], "residence_region_id": gu.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["residence"]["full_name"], "서울 성북구")
+        self.assertEqual(response.data["hometowns"][0]["name"], "부산광역시")
+        diary.refresh_from_db()
+        self.assertEqual(diary.region.name, "천안시")
+
+    def test_settings(self) -> None:
+        url = reverse("me-settings")
+        self.assertFalse(self.client.get(url).data["letter_paused"])
+        response = self.client.patch(url, {"letter_paused": True}, format="json")
+        self.assertTrue(response.data["letter_paused"])
+        self.assertTrue(response.data["weekly_prompt_enabled"])
+
+    def test_withdraw_removes_data_and_invalidates_tokens(self) -> None:
+        grant_stamp(self.user, FIRST_STEP)
+        Diary.objects.create(author=self.user, region=regions()[1], body="x")
+        token = str(RefreshToken.for_user(self.user).access_token)
+        self.assertEqual(self.client.delete(reverse("me")).status_code, 204)
+        self.assertFalse(User.objects.filter(email="a@skuniv.ac.kr").exists())
+        self.assertFalse(Diary.objects.exists())
+
+        fresh = APIClient()
+        fresh.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        self.assertEqual(fresh.get(reverse("me")).status_code, 401)
+
+    def test_withdraw_keeps_report_with_null_target(self) -> None:
+        reporter = make_user("c@skuniv.ac.kr", "신고자")
+        report = Report.objects.create(
+            reporter=reporter,
+            target_user=self.user,
+            target_type="user",
+            target_id=self.user.id,
+            reason="spam",
+        )
+        self.client.delete(reverse("me"))
+        report.refresh_from_db()
+        self.assertIsNone(report.target_user)

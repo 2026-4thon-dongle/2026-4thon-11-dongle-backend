@@ -1,5 +1,6 @@
 from typing import Any
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers, status
 
 from apps.regions.models import Region
@@ -148,3 +149,45 @@ class NicknameCheckSerializer(serializers.Serializer[Any]):
 
 class LogoutSerializer(serializers.Serializer[Any]):
     refresh = serializers.CharField()
+
+
+class MeStatsSerializer(serializers.Serializer[Any]):
+    diary_count = serializers.IntegerField()
+    letter_count = serializers.IntegerField()
+    stamp_count = serializers.IntegerField()
+    penpal_count = serializers.IntegerField()
+    draft_count = serializers.IntegerField()
+
+
+class MeSerializer(UserSerializer):
+    stats = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        fields = [*UserSerializer.Meta.fields, "stats"]
+        read_only_fields = fields
+
+    @extend_schema_field(MeStatsSerializer)
+    def get_stats(self, user: User) -> dict[str, int]:
+        return {
+            "diary_count": user.diaries.count(),
+            "stamp_count": user.stamps.count(),
+            # letters 앱이 생기면 실제 값으로 바꾼다 (SET-01).
+            "letter_count": 0,
+            "penpal_count": 0,
+            "draft_count": 0,
+        }
+
+
+class NicknameUpdateSerializer(serializers.Serializer[Any]):
+    nickname = serializers.CharField()
+
+
+class UserSettingsSerializer(serializers.ModelSerializer[User]):
+    class Meta:
+        model = User
+        fields = [
+            "letter_paused",
+            "push_enabled",
+            "daily_digest_enabled",
+            "weekly_prompt_enabled",
+        ]
