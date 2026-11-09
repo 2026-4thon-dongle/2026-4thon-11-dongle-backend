@@ -14,10 +14,11 @@
 
 ## 2. 현재 단계
 
-- 2026-11-05: 저장소 초기 세팅 완료(Django 기본 구조, 협업 문서 구조). 도메인 앱과 모델은 아직 없다.
+- 2026-11-05: 저장소 초기 세팅 완료(Django 기본 구조, 협업 문서 구조).
+- 2026-11-09: `users`, `regions`, `stamps`(지급만), `diaries`, `moderations`, `notifications` 앱 추가. 피드, 편지, 우체통, 우표 API는 아직 없다.
 - 개발 기간 2주. MVP: 학교 이메일 인증(`ac.kr`), 지역 설정(시·도), 고향 일기(텍스트 + 사진 1장), 교차 피드, 편지 답장(본문 + 손글씨 한 줄 이미지 + 편지지), 느린 편지(1h/3h/6h/12h, 데모 모드 1분), 우체통.
 - 여유 시: 지역 우표, 펜팔 친구, 신고·차단, 금칙어 필터, 하루 한 번 이메일 알림.
-- **주의:** 첫 `migrate` 전에 `apps/users`에 커스텀 User 모델을 만들고 `AUTH_USER_MODEL`을 지정해야 한다. 그 전에는 `migrate`를 돌리지 않는다.
+- 피드는 `Diary.objects.visible_to(user)`로 조회한다. 편지는 `apps.moderations.services`의 `blocked_user_ids`, `detect_contact_patterns`, `apps.notifications.services.notify`, `apps.stamps.services.grant_stamp`를 쓴다.
 
 이 절은 단계가 바뀔 때 갱신한다.
 

@@ -9,3 +9,6 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 DATABASES = {
     "default": env.db("DATABASE_URL", default="postgres://postgres:postgres@localhost:5432/dongle"),
 }
+
+# 로컬에서는 인증 코드를 runserver 콘솔에 출력한다.
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
