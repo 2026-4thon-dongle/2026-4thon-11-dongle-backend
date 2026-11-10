@@ -10,5 +10,13 @@ DATABASES = {
     "default": env.db("DATABASE_URL", default="postgres://postgres:postgres@localhost:5432/dongle"),
 }
 
-# 로컬에서는 인증 코드를 runserver 콘솔에 출력한다.
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# .env에 EMAIL_HOST가 있으면 실제 메일을 보내고, 없으면 인증 코드를 runserver 콘솔에 출력한다.
+if env("EMAIL_HOST", default=""):
+    EMAIL_HOST = env("EMAIL_HOST")
+    EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+    EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+    EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+    EMAIL_TIMEOUT = 10
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
