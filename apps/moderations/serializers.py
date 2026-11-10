@@ -8,11 +8,24 @@ from .models import Block, Report
 
 
 class ReportCreateSerializer(serializers.Serializer[Any]):
-    target_type = serializers.ChoiceField(choices=Report.TargetType.choices)
-    target_id = serializers.IntegerField(min_value=1)
-    reason = serializers.ChoiceField(choices=Report.Reason.choices)
-    detail = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
-    block_user = serializers.BooleanField(default=False)
+    target_type = serializers.ChoiceField(
+        choices=Report.TargetType.choices,
+        help_text="신고 대상 종류. diary: 일기 / user: 사용자 / letter: 편지(아직 미지원)",
+    )
+    target_id = serializers.IntegerField(min_value=1, help_text="신고 대상(일기·사용자)의 id")
+    reason = serializers.ChoiceField(
+        choices=Report.Reason.choices,
+        help_text="spam: 스팸·광고 / abuse: 욕설·비방 / sexual: 선정적인 내용 / "
+        "personal_info: 개인정보 노출 / etc: 기타",
+    )
+    detail = serializers.CharField(
+        max_length=200,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="상세 사유 (최대 200자). reason이 etc면 필수",
+    )
+    block_user = serializers.BooleanField(default=False, help_text="true면 대상 사용자도 함께 차단")
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         if attrs["reason"] == Report.Reason.ETC and not attrs["detail"].strip():
@@ -21,12 +34,14 @@ class ReportCreateSerializer(serializers.Serializer[Any]):
 
 
 class ReportResultSerializer(serializers.Serializer[Any]):
-    id = serializers.IntegerField()
-    blocked = serializers.BooleanField()
+    id = serializers.IntegerField(help_text="신고 id")
+    blocked = serializers.BooleanField(help_text="함께 차단했는지")
 
 
 class BlockCreateSerializer(serializers.Serializer[Any]):
-    user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), help_text="차단할 사용자 id"
+    )
 
 
 class BlockedUserSerializer(serializers.ModelSerializer[User]):
@@ -37,18 +52,22 @@ class BlockedUserSerializer(serializers.ModelSerializer[User]):
 
 
 class BlockSerializer(serializers.ModelSerializer[Block]):
-    user = BlockedUserSerializer(source="blocked", read_only=True)
+    user = BlockedUserSerializer(source="blocked", read_only=True, help_text="차단한 사용자")
 
     class Meta:
         model = Block
         fields = ["user", "created_at"]
         read_only_fields = fields
+        extra_kwargs = {"created_at": {"help_text": "차단한 시각"}}
 
 
 class ContactCheckSerializer(serializers.Serializer[Any]):
-    text = serializers.CharField(allow_blank=True, trim_whitespace=False)
+    text = serializers.CharField(allow_blank=True, trim_whitespace=False, help_text="검사할 본문")
 
 
 class ContactCheckResultSerializer(serializers.Serializer[Any]):
-    has_contact = serializers.BooleanField()
-    types = serializers.ListField(child=serializers.CharField())
+    has_contact = serializers.BooleanField(help_text="연락처가 하나라도 있으면 true")
+    types = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="찾은 연락처 종류. phone / email / kakao / instagram",
+    )

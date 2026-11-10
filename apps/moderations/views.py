@@ -3,7 +3,7 @@ from typing import cast
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from apps.diaries.models import Diary
 from apps.users.models import User
 from config.exceptions import ApiError
+from config.schema import error_response
 
 from .models import Block, Report
 from .serializers import (
@@ -47,8 +48,30 @@ def _resolve_report_target(reporter: User, target_type: str, target_id: int) -> 
     return target_user
 
 
+@extend_schema(tags=["신고·차단"])
 class ReportCreateView(APIView):
-    @extend_schema(request=ReportCreateSerializer, responses={201: ReportResultSerializer})
+    @extend_schema(
+        summary="신고하기",
+        description=(
+            "일기나 사용자를 신고한다. 편지 신고(`target_type=letter`)는 편지 기능이 붙은 뒤 "
+            "지원한다.\n\n"
+            "- 신고한 일기, 신고한 사용자의 일기는 그 뒤로 내 피드에 보이지 않는다.\n"
+            f"- 한 일기가 신고 {HIDE_THRESHOLD}건을 넘으면 모두에게서 숨겨진다.\n"
+            "- `reason=etc`이면 `detail`에 사유를 꼭 적어야 한다.\n"
+            "- `block_user=true`이면 신고와 함께 대상 사용자를 차단한다."
+        ),
+        request=ReportCreateSerializer,
+        responses={
+            201: ReportResultSerializer,
+            400: error_response(
+                "`CANNOT_REPORT_SELF`: 내 글·내 계정 신고 / "
+                "`UNSUPPORTED_REPORT_TARGET`: 아직 지원하지 않는 편지 신고 / "
+                "`VALIDATION_ERROR`: 기타 사유 미입력 등"
+            ),
+            404: error_response("`TARGET_NOT_FOUND`: 없거나 내가 볼 수 없는 신고 대상"),
+            409: error_response("`ALREADY_REPORTED`: 이미 신고한 대상"),
+        },
+    )
     def post(self, request: Request) -> Response:
         reporter = cast(User, request.user)
         serializer = ReportCreateSerializer(data=request.data)
@@ -83,13 +106,33 @@ class ReportCreateView(APIView):
         )
 
 
+@extend_schema(tags=["신고·차단"])
+@extend_schema_view(
+    get=extend_schema(
+        summary="차단 목록",
+        description="내가 차단한 사용자를 최근 차단한 순서로 돌려준다.",
+    )
+)
 class BlockListCreateView(generics.ListAPIView[Block]):
     serializer_class = BlockSerializer
 
     def get_queryset(self) -> QuerySet[Block]:
         return Block.objects.filter(blocker_id=self.request.user.pk).select_related("blocked")
 
-    @extend_schema(request=BlockCreateSerializer, responses={201: BlockSerializer})
+    @extend_schema(
+        summary="사용자 차단",
+        description=(
+            "사용자를 차단한다. 차단하면 서로의 일기가 피드에 보이지 않는다. "
+            "이미 차단한 사용자여도 에러 없이 기존 차단 정보를 돌려준다."
+        ),
+        request=BlockCreateSerializer,
+        responses={
+            201: BlockSerializer,
+            400: error_response(
+                "`CANNOT_BLOCK_SELF`: 자기 자신 차단 / `VALIDATION_ERROR`: 없는 사용자"
+            ),
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = BlockCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -100,15 +143,32 @@ class BlockListCreateView(generics.ListAPIView[Block]):
         return Response(BlockSerializer(block).data, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(tags=["신고·차단"])
 class BlockDeleteView(APIView):
-    @extend_schema(responses={204: None})
+    @extend_schema(
+        summary="차단 해제",
+        description="경로의 `user_id`는 차단한 사용자의 id다.",
+        responses={
+            204: OpenApiResponse(description="차단 해제 완료"),
+            404: error_response("`NOT_FOUND`: 차단하지 않은 사용자"),
+        },
+    )
     def delete(self, request: Request, user_id: int) -> Response:
         get_object_or_404(Block, blocker_id=request.user.pk, blocked_id=user_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(tags=["신고·차단"])
 class ContactCheckView(APIView):
-    @extend_schema(request=ContactCheckSerializer, responses={200: ContactCheckResultSerializer})
+    @extend_schema(
+        summary="연락처 노출 검사",
+        description=(
+            "일기·편지를 보내기 전에 본문에 전화번호, 이메일, 카카오톡·인스타그램 아이디가 "
+            "있는지 검사한다. 막지 않고 경고만 띄우는 용도라서 결과와 상관없이 200을 돌려준다."
+        ),
+        request=ContactCheckSerializer,
+        responses={200: ContactCheckResultSerializer},
+    )
     def post(self, request: Request) -> Response:
         serializer = ContactCheckSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
