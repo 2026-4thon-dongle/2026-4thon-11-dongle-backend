@@ -4,7 +4,12 @@ from typing import Any, cast
 from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
-from drf_spectacular.utils import OpenApiParameter, extend_schema
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import generics, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
@@ -15,6 +20,7 @@ from apps.stamps.serializers import StampSerializer
 from apps.stamps.services import FIRST_DIARY, grant_stamp
 from apps.users.models import User
 from config.exceptions import ApiError
+from config.schema import error_response
 
 from .models import Diary, DiaryPrompt
 from .serializers import (
@@ -34,10 +40,32 @@ def _delete_image_on_commit(diary: Diary) -> None:
         transaction.on_commit(lambda: storage.delete(name))
 
 
+IMAGE_RULES = "사진은 JPEG·PNG·WEBP, 5MB 이하 1장만 올릴 수 있다."
+
+
+@extend_schema(tags=["일기"])
 class DiaryCreateView(APIView):
     parser_classes = UPLOAD_PARSERS
 
-    @extend_schema(request=DiaryWriteSerializer, responses={201: DiaryCreateResultSerializer})
+    @extend_schema(
+        summary="고향 일기 작성",
+        description=(
+            "지금 사는 동네의 하루를 일기로 쓴다. 사진을 올릴 때는 `multipart/form-data`, "
+            "글만 쓸 때는 JSON으로 보내도 된다.\n\n"
+            "- 일기 지역은 요청 값이 아니라 작성 시점의 내 거주 지역으로 정해진다.\n"
+            f"- {IMAGE_RULES}\n"
+            "- `accepts_letters`를 빼면 편지 받기가 켜진다(기본 true).\n"
+            "- 첫 일기라면 '첫 일기' 우표가 지급되어 `granted_stamps`에 담긴다."
+        ),
+        request=DiaryWriteSerializer,
+        responses={
+            201: DiaryCreateResultSerializer,
+            400: error_response(
+                "`RESIDENCE_REQUIRED`: 거주 지역을 아직 설정하지 않음 / "
+                "`VALIDATION_ERROR`: 본문 500자 초과, 사진 형식·크기 위반 등"
+            ),
+        },
+    )
     def post(self, request: Request) -> Response:
         user = cast(User, request.user)
         if user.residence is None:
@@ -56,6 +84,13 @@ class DiaryCreateView(APIView):
         return Response(payload, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(tags=["일기"])
+@extend_schema_view(
+    get=extend_schema(
+        summary="내 일기 목록",
+        description="내가 쓴 일기를 최신순으로 돌려준다. 숨김·나만 보기 일기도 포함한다.",
+    )
+)
 class MyDiaryListView(generics.ListAPIView[Diary]):
     serializer_class = DiarySerializer
 
@@ -65,6 +100,21 @@ class MyDiaryListView(generics.ListAPIView[Diary]):
         )
 
 
+NOT_MY_DIARY = error_response("`NOT_FOUND`: 없는 일기이거나 내 일기가 아님")
+
+
+@extend_schema(tags=["일기"])
+@extend_schema_view(
+    get=extend_schema(
+        summary="내 일기 상세",
+        responses={200: DiarySerializer, 404: NOT_MY_DIARY},
+    ),
+    delete=extend_schema(
+        summary="내 일기 삭제",
+        description="일기와 첨부 사진을 함께 지운다.",
+        responses={204: OpenApiResponse(description="삭제 완료"), 404: NOT_MY_DIARY},
+    ),
+)
 class MyDiaryDetailView(generics.RetrieveUpdateDestroyAPIView[Diary]):
     """본인 일기 조회·수정·삭제. 다른 사람의 일기 상세는 FEED-04에서 이 경로에 붙인다."""
 
@@ -77,7 +127,21 @@ class MyDiaryDetailView(generics.RetrieveUpdateDestroyAPIView[Diary]):
             "author", "region", "region__parent"
         )
 
-    @extend_schema(request=DiaryWriteSerializer, responses={200: DiarySerializer})
+    @extend_schema(
+        summary="내 일기 수정",
+        description=(
+            "보낸 항목만 바꾼다(부분 수정). 일기 지역은 바뀌지 않는다.\n\n"
+            "- 사진 교체: 새 `image`를 보낸다. 이전 사진은 지워진다.\n"
+            "- 사진 삭제: `remove_image=true`를 보낸다. `image`와 함께 보낼 수 없다.\n"
+            f"- {IMAGE_RULES}"
+        ),
+        request=DiaryWriteSerializer,
+        responses={
+            200: DiarySerializer,
+            400: error_response("`VALIDATION_ERROR`: 본문 500자 초과, 사진 규칙 위반 등"),
+            404: NOT_MY_DIARY,
+        },
+    )
     def patch(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         diary = self.get_object()
         serializer = DiaryWriteSerializer(diary, data=request.data, partial=True)
@@ -101,12 +165,26 @@ class MyDiaryDetailView(generics.RetrieveUpdateDestroyAPIView[Diary]):
             instance.delete()
 
 
+@extend_schema(tags=["일기"])
 class DiaryPromptView(APIView):
     """오늘의 글감. exclude를 주면 '다른 글감'으로 그 글감을 뺀 하나를 고른다."""
 
     @extend_schema(
-        parameters=[OpenApiParameter("exclude", int, required=False)],
-        responses={200: DiaryPromptSerializer},
+        summary="오늘의 글감",
+        description=(
+            "일기 작성 화면에 보여 줄 글감 하나를 돌려준다. `exclude` 없이 부르면 날짜마다 "
+            "정해진 글감이 나와 하루 동안 같다. '다른 글감' 버튼은 지금 글감 id를 `exclude`로 "
+            "넘기면 그것을 뺀 글감 중 하나를 무작위로 고른다."
+        ),
+        parameters=[
+            OpenApiParameter(
+                "exclude", int, required=False, description="제외할 글감 id (지금 보고 있는 글감)"
+            )
+        ],
+        responses={
+            200: DiaryPromptSerializer,
+            404: error_response("`PROMPT_NOT_FOUND`: 활성화된 글감이 하나도 없음"),
+        },
     )
     def get(self, request: Request) -> Response:
         prompts = list(DiaryPrompt.objects.filter(is_active=True))

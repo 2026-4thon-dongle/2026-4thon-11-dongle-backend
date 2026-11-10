@@ -18,12 +18,15 @@ class AuthorSerializer(serializers.ModelSerializer[User]):
         model = User
         fields = ["id", "nickname"]
         read_only_fields = fields
+        extra_kwargs = {"nickname": {"help_text": "작성자 닉네임"}}
 
 
 class DiarySerializer(serializers.ModelSerializer[Diary]):
-    author = AuthorSerializer(read_only=True)
-    region = RegionSerializer(read_only=True)
-    received_letter_count = serializers.SerializerMethodField()
+    author = AuthorSerializer(read_only=True, help_text="작성자")
+    region = RegionSerializer(read_only=True, help_text="일기를 쓴 지역 (작성 당시 거주 지역)")
+    received_letter_count = serializers.SerializerMethodField(
+        help_text="이 일기로 받은 편지 수 (편지 기능 전까지 0)"
+    )
 
     class Meta:
         model = Diary
@@ -40,6 +43,17 @@ class DiarySerializer(serializers.ModelSerializer[Diary]):
             "updated_at",
         ]
         read_only_fields = fields
+        extra_kwargs = {
+            "body": {"help_text": "일기 본문 (최대 500자)"},
+            "image": {"help_text": "사진 URL. 사진이 없으면 null"},
+            "accepts_letters": {"help_text": "이 일기로 편지를 받을지"},
+            "visibility": {
+                "help_text": "공개 범위. all: 모두에게 / same_hometown: 같은 고향 사람에게만 / "
+                "private: 나만 보기"
+            },
+            "created_at": {"help_text": "작성 시각"},
+            "updated_at": {"help_text": "마지막 수정 시각"},
+        }
 
     def get_received_letter_count(self, diary: Diary) -> int:
         # letters 앱이 생기면 일기별 받은 편지 수로 바꾼다 (DIARY-07).
@@ -47,14 +61,28 @@ class DiarySerializer(serializers.ModelSerializer[Diary]):
 
 
 class DiaryWriteSerializer(serializers.ModelSerializer[Diary]):
-    body = serializers.CharField(max_length=BODY_MAX_LENGTH)
-    remove_image = serializers.BooleanField(write_only=True, required=False, default=False)
+    body = serializers.CharField(max_length=BODY_MAX_LENGTH, help_text="일기 본문 (최대 500자)")
+    remove_image = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=False,
+        help_text="(수정 때만) true면 지금 사진을 지운다. image와 함께 보낼 수 없다.",
+    )
     # multipart에서 값이 빠지면 DRF가 False로 읽으므로 기본값을 명시한다 (DIARY-02: 기본 ON).
-    accepts_letters = serializers.BooleanField(required=False, default=True)
+    accepts_letters = serializers.BooleanField(
+        required=False, default=True, help_text="이 일기로 편지를 받을지 (기본 true)"
+    )
 
     class Meta:
         model = Diary
         fields = ["body", "image", "remove_image", "accepts_letters", "visibility"]
+        extra_kwargs = {
+            "image": {"help_text": "사진 1장. JPEG·PNG·WEBP, 5MB 이하"},
+            "visibility": {
+                "help_text": "공개 범위 (기본 all). all: 모두에게 / "
+                "same_hometown: 같은 고향 사람에게만 / private: 나만 보기"
+            },
+        }
 
     def validate_image(self, image: UploadedFile | None) -> UploadedFile | None:
         if image is None:
@@ -72,7 +100,11 @@ class DiaryWriteSerializer(serializers.ModelSerializer[Diary]):
 
 
 class DiaryCreateResultSerializer(DiarySerializer):
-    granted_stamps = StampSerializer(many=True, read_only=True)
+    granted_stamps = StampSerializer(
+        many=True,
+        read_only=True,
+        help_text="이번 요청으로 새로 받은 우표. 비어 있으면 획득 모달을 띄우지 않는다.",
+    )
 
     class Meta(DiarySerializer.Meta):
         fields = [*DiarySerializer.Meta.fields, "granted_stamps"]
@@ -84,3 +116,4 @@ class DiaryPromptSerializer(serializers.ModelSerializer[DiaryPrompt]):
         model = DiaryPrompt
         fields = ["id", "text"]
         read_only_fields = fields
+        extra_kwargs = {"text": {"help_text": "글감 문구"}}
