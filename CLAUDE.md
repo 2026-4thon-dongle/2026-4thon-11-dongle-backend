@@ -14,10 +14,11 @@
 
 ## 2. 현재 단계
 
-- 2026-11-05: 저장소 초기 세팅 완료(Django 기본 구조, 협업 문서 구조). 도메인 앱과 모델은 아직 없다.
+- 2026-11-05: 저장소 초기 세팅 완료(Django 기본 구조, 협업 문서 구조).
+- 2026-11-09: `users`, `regions`, `stamps`(지급만), `diaries`, `moderations`, `notifications` 앱 추가. 피드, 편지, 우체통, 우표 API는 아직 없다.
 - 개발 기간 2주. MVP: 학교 이메일 인증(`ac.kr`), 지역 설정(시·도), 고향 일기(텍스트 + 사진 1장), 교차 피드, 편지 답장(본문 + 손글씨 한 줄 이미지 + 편지지), 느린 편지(1h/3h/6h/12h, 데모 모드 1분), 우체통.
 - 여유 시: 지역 우표, 펜팔 친구, 신고·차단, 금칙어 필터, 하루 한 번 이메일 알림.
-- **주의:** 첫 `migrate` 전에 `apps/users`에 커스텀 User 모델을 만들고 `AUTH_USER_MODEL`을 지정해야 한다. 그 전에는 `migrate`를 돌리지 않는다.
+- 피드는 `Diary.objects.visible_to(user)`로 조회한다. 편지는 `apps.moderations.services`의 `blocked_user_ids`, `detect_contact_patterns`, `apps.notifications.services.notify`, `apps.stamps.services.grant_stamp`를 쓴다.
 
 이 절은 단계가 바뀔 때 갱신한다.
 
@@ -175,3 +176,11 @@
 - 질문은 한꺼번에 묶어서 한 번에 한다.
 - 병합은 사용자가 말했을 때만 한다(7절). `main`·`dev`에 직접 커밋·푸시하지 않는다.
 - 커밋 마지막 줄에 `Co-Authored-By:` 줄을 남긴다. `.env`, 비밀값, `.claude/`는 커밋하지 않는다.
+
+## 12. 문서 레포 연동
+
+- 프론트·백엔드 공용 문서 레포는 `2026-4thon-11-dongle-documents`이다(API 명세, 기능 명세, 변경 사항, 요청, 문제, 결정). 기본 위치는 이 레포와 같은 상위 폴더의 `../2026-4thon-11-dongle-documents`이다. 로컬 폴더 구조가 다르면 세션을 시작한 폴더의 CLAUDE.md에 적힌 경로를 따른다.
+- 구현 전에 해당 도메인의 `api/`·`spec/` 문서에서 필요한 절만 읽는다.
+- 코드를 명세에 맞춘다. 명세에 없는 동작을 추측해 구현하지 않는다.
+- 명세가 틀렸다고 판단되면 명세를 임의로 고치지 말고, 문서 레포의 `issues/` 또는 `requests/` 문서 작성을 개발자(사용자)에게 제안한다.
+- 작업을 마칠 때 PR 설명서에 관련 명세 문서 경로를 적는다.

@@ -1,5 +1,6 @@
 """공통 설정. 환경별 값은 local.py / prod.py에서 정한다."""
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -21,12 +22,20 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "drf_spectacular",
 ]
 
 # 도메인 앱은 apps/ 아래에 만들고 여기에 "apps.<name>" 형태로 등록한다.
-LOCAL_APPS: list[str] = []
+LOCAL_APPS: list[str] = [
+    "apps.regions",
+    "apps.users",
+    "apps.stamps",
+    "apps.moderations",
+    "apps.diaries",
+    "apps.notifications",
+]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -40,6 +49,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+AUTH_USER_MODEL = "users.User"
 
 ROOT_URLCONF = "config.urls"
 
@@ -88,12 +99,47 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Dongle Backend API",
+    "DESCRIPTION": (
+        "고향 교환 펜팔 서비스 동글의 백엔드 API.\n\n"
+        "- 인증: 로그인·회원가입으로 받은 `access` 토큰을 "
+        "`Authorization: Bearer <access>` 헤더에 담는다. "
+        "오른쪽 위 **Authorize**에 access 값만 넣으면 된다.\n"
+        "- 공개 API(인증 메일, 닉네임 확인, 회원가입, 토큰 재발급, 지역 목록)를 뺀 "
+        "모든 API는 로그인이 필요하며, 토큰이 없거나 만료되면 401을 돌려준다.\n"
+        "- 에러는 모두 `{code, message}` 형식이다. 입력값 검사 실패는 "
+        "`code=VALIDATION_ERROR`이고 `errors`에 필드별 메시지가 담긴다.\n"
+        "- 목록 API는 `?page=` 페이지네이션(한 페이지 20개)을 쓴다.\n"
+        "- 시간은 모두 Asia/Seoul 기준 ISO 8601 문자열이다."
+    ),
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "TAGS": [
+        {"name": "인증", "description": "학교 메일 인증, 회원가입, 로그인, 토큰 재발급, 로그아웃"},
+        {"name": "내 정보", "description": "마이 페이지, 닉네임·지역·설정 변경, 탈퇴"},
+        {"name": "지역", "description": "본가·거주 지역 선택용 시·도/시·군·구 목록"},
+        {"name": "일기", "description": "고향 일기 작성·조회·수정·삭제, 오늘의 글감"},
+        {"name": "신고·차단", "description": "신고, 차단, 연락처 노출 검사"},
+        {"name": "알림", "description": "알림 센터, 푸시 토큰"},
+    ],
 }
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="동글 <no-reply@dongle.local>")
+
+# 약관을 고치면 올린다. 동의 시점의 버전을 TermsAgreement에 저장한다.
+TERMS_VERSION = "2026-11-09"

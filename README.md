@@ -21,14 +21,19 @@ pip install -r requirements-dev.txt
 # 4. 환경변수: 복사 후 DATABASE_URL 등을 내 환경에 맞게 고친다
 cp .env.example .env
 
-# 5. 실행
+# 5. 테이블 생성
+python manage.py migrate
+
+# 6. 실행
 python manage.py runserver
 ```
 
 - API 문서(Swagger): http://localhost:8000/api/docs/
 - Admin: http://localhost:8000/admin/
 
-> 아직 도메인 앱이 없다. 커스텀 User 모델을 만들기 전에는 `migrate`를 돌리지 않는다 (CLAUDE.md 2절).
+`migrate`가 지역·우표·글감 기본 데이터도 함께 넣는다. 로컬에서는 인증 코드가 `runserver` 콘솔에 출력된다.
+
+매주 월요일 글감 알림은 스케줄러로 `python manage.py create_weekly_prompt_notifications`를 실행한다.
 
 ## 검사
 
