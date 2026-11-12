@@ -215,10 +215,16 @@ class UserSettingsSerializer(serializers.ModelSerializer[User]):
             "push_enabled",
             "daily_digest_enabled",
             "weekly_prompt_enabled",
+            "letter_arrival_push_enabled",
+            "letter_departure_push_enabled",
         ]
         extra_kwargs = {
             "letter_paused": {"help_text": "편지 받기 일시정지. true면 새 편지를 받지 않는다."},
             "push_enabled": {"help_text": "푸시 알림 받기"},
             "daily_digest_enabled": {"help_text": "하루 한 번 이메일 알림 받기"},
             "weekly_prompt_enabled": {"help_text": "주간 글감 알림 받기"},
+            "letter_arrival_push_enabled": {"help_text": "편지 도착 알림 받기"},
+            "letter_departure_push_enabled": {
+                "help_text": "나에게 오는 편지가 출발했을 때 알림 받기"
+            },
         }

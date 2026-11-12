@@ -273,6 +273,15 @@ class MeTests(TestCase):
         self.assertTrue(response.data["letter_paused"])
         self.assertTrue(response.data["weekly_prompt_enabled"])
 
+    def test_settings_letter_push_toggles(self) -> None:
+        url = reverse("me-settings")
+        data = self.client.get(url).data
+        self.assertTrue(data["letter_arrival_push_enabled"])
+        self.assertTrue(data["letter_departure_push_enabled"])
+        response = self.client.patch(url, {"letter_departure_push_enabled": False}, format="json")
+        self.assertFalse(response.data["letter_departure_push_enabled"])
+        self.assertTrue(response.data["letter_arrival_push_enabled"])
+
     def test_withdraw_removes_data_and_invalidates_tokens(self) -> None:
         grant_stamp(self.user, FIRST_STEP)
         Diary.objects.create(author=self.user, region=regions()[1], body="x")
