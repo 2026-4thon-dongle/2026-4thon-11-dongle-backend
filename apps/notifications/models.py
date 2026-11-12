@@ -5,6 +5,7 @@ from django.db import models
 class Notification(models.Model):
     class Type(models.TextChoices):
         LETTER_ARRIVED = "letter_arrived", "편지 도착"
+        LETTER_DEPARTED = "letter_departed", "편지 출발"
         LETTER_LOCATION = "letter_location", "배송 위치"
         ROUND_TRIP = "round_trip", "왕복 완료"
         PROMPT = "prompt", "글감"
