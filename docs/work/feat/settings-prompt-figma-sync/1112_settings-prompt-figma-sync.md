@@ -5,7 +5,7 @@
 - 브랜치: `feat/settings-prompt-figma-sync`
 - 기준 커밋: `3a94468`
 - 상태: 진행 중
-- 관련 PR: 미정
+- 관련 PR: PR5
 
 ## 지금 작업 내용
 
@@ -52,4 +52,4 @@
 
 ## 결정·변경 사항과 남은 일
 
-- gh 미로그인이라 Draft PR은 사용자가 열어야 한다.
+- PR5 설명서 작성: `docs/PR/1113_PR005_settings-prompt-figma-sync/`
