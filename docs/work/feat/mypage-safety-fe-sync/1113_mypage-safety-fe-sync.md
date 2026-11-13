@@ -48,7 +48,12 @@
 | 날짜 | 내용 |
 |---|---|
 | 2026-11-13 | 작업 설계 작성 |
+| 2026-11-13 | `school_name`, 차단 목록 `user.residence`, 신고 사유 라벨(마이그레이션 0002, choices만 변경) 구현. check·ruff·mypy·test(63개) 통과 |
+| 2026-11-13 | 문서 레포 api/users·safety 갱신 |
 
 ## 결정·변경 사항과 남은 일
 
 - 기준 브랜치 `feat/settings-prompt-figma-sync`가 아직 `dev`에 병합되지 않았다. 그 PR이 먼저 병합되어야 한다.
+- gh 미로그인이라 Draft PR과 PR 설명서는 사용자가 PR을 연 뒤 작성한다.
+- 프론트에 전달할 것: 설정 필드 이름은 `letter_arrival_push_enabled`·`letter_departure_push_enabled`다(프론트 mock은 `letter_arrival_enabled`). 재발송 간격은 명세대로 60초이고 프론트 데모는 30초다(서버의 `resend_available_seconds`를 쓰면 된다). 공개 범위 값은 `same_hometown`이다(프론트 mock은 `hometown`). 일기 편지 받기 필드는 `accepts_letters`다.
+- 남은 확인: 우표첩 「5 / 17」의 17 기준(우표 담당과 확인), 동국대 메일이 `ac.kr`이 아니면 가입할 수 없다.
