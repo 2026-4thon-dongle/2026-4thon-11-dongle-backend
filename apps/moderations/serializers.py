@@ -16,8 +16,8 @@ class ReportCreateSerializer(serializers.Serializer[Any]):
     target_id = serializers.IntegerField(min_value=1, help_text="신고 대상(일기·사용자)의 id")
     reason = serializers.ChoiceField(
         choices=Report.Reason.choices,
-        help_text="spam: 스팸·광고 / abuse: 욕설·비방 / sexual: 선정적인 내용 / "
-        "personal_info: 개인정보 노출 / etc: 기타",
+        help_text="abuse: 욕설 · 비하 / sexual: 성적인 내용 / "
+        "personal_info: 연락처 · 개인정보 요구 / spam: 광고 · 도배 / etc: 기타 (직접 입력)",
     )
     detail = serializers.CharField(
         max_length=200,

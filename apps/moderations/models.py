@@ -28,11 +28,12 @@ class Report(models.Model):
         USER = "user", "사용자"
 
     class Reason(models.TextChoices):
-        SPAM = "spam", "스팸·광고"
-        ABUSE = "abuse", "욕설·비방"
-        SEXUAL = "sexual", "선정적인 내용"
-        PERSONAL_INFO = "personal_info", "개인정보 노출"
-        ETC = "etc", "기타"
+        # 라벨은 Figma 3-7 순서·문구를 따른다.
+        ABUSE = "abuse", "욕설 · 비하"
+        SEXUAL = "sexual", "성적인 내용"
+        PERSONAL_INFO = "personal_info", "연락처 · 개인정보 요구"
+        SPAM = "spam", "광고 · 도배"
+        ETC = "etc", "기타 (직접 입력)"
 
     class Status(models.TextChoices):
         PENDING = "pending", "검토 대기"
