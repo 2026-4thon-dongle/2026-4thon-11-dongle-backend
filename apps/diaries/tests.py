@@ -14,7 +14,7 @@ from apps.regions.models import Region
 from apps.stamps.models import UserStamp
 from apps.users.models import User
 
-from .models import Diary
+from .models import Diary, DiaryPrompt
 
 MEDIA = tempfile.mkdtemp()
 
@@ -143,6 +143,15 @@ class DiaryApiTests(TestCase):
             self.assertNotEqual(
                 self.client.get(url, {"exclude": today["id"]}).data["id"], today["id"]
             )
+
+    def test_prompts_are_figma_list(self) -> None:
+        active = DiaryPrompt.objects.filter(is_active=True)
+        self.assertEqual(active.count(), 14)
+        self.assertTrue(active.filter(text="오늘 고향 생각이 났던 순간").exists())
+        self.assertIn(
+            self.client.get(reverse("diary-prompt")).data["text"],
+            set(active.values_list("text", flat=True)),
+        )
 
 
 class VisibleToTests(TestCase):

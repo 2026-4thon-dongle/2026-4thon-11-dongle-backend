@@ -24,9 +24,32 @@ MAX_ATTEMPTS = 5
 SIGNUP_TOKEN_MAX_AGE_SECONDS = 30 * 60
 SIGNUP_TOKEN_SALT = "dongle.signup-token"
 
+# 마이 페이지 「OO 인증 완료」에 쓰는 학교 약칭 (SET-01). 4호선톤 참가 대학만 둔다.
+SCHOOL_NAMES = {
+    "kookmin.ac.kr": "국민대",
+    "duksung.ac.kr": "덕성여대",
+    "dongguk.ac.kr": "동국대",
+    "dgu.ac.kr": "동국대",
+    "skuniv.ac.kr": "서경대",
+    "seoultech.ac.kr": "서울과기대",
+    "sungshin.ac.kr": "성신여대",
+    "sookmyung.ac.kr": "숙명여대",
+    "sm.ac.kr": "숙명여대",
+    "hansung.ac.kr": "한성대",
+}
+
 
 def is_school_email(email: str) -> bool:
     return SCHOOL_EMAIL_RE.match(email) is not None
+
+
+def school_name_of(email: str) -> str | None:
+    """메일 도메인으로 학교 약칭을 찾는다. 하위 도메인도 같은 학교로 본다. 모르면 None."""
+    domain = email.rsplit("@", 1)[-1].lower()
+    for school_domain, name in SCHOOL_NAMES.items():
+        if domain == school_domain or domain.endswith(f".{school_domain}"):
+            return name
+    return None
 
 
 def _hash_code(email: str, purpose: str, code: str) -> str:

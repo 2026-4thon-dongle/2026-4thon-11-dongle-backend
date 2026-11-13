@@ -100,6 +100,9 @@ class BlockTests(TestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["user"]["nickname"], "상대")
         self.assertNotIn("email", response.data["results"][0]["user"])
+        self.assertEqual(
+            response.data["results"][0]["user"]["residence"]["full_name"], "충남 천안시"
+        )
         self.assertEqual(blocked_user_ids(self.other), {self.me.id})
 
         delete_url = reverse("block-delete", args=[self.other.id])
