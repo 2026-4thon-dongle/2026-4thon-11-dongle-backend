@@ -117,7 +117,9 @@ class BlockListCreateView(generics.ListAPIView[Block]):
     serializer_class = BlockSerializer
 
     def get_queryset(self) -> QuerySet[Block]:
-        return Block.objects.filter(blocker_id=self.request.user.pk).select_related("blocked")
+        return Block.objects.filter(blocker_id=self.request.user.pk).select_related(
+            "blocked__residence__parent"
+        )
 
     @extend_schema(
         summary="사용자 차단",

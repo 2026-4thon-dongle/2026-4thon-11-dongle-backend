@@ -2,6 +2,7 @@ from typing import Any
 
 from rest_framework import serializers
 
+from apps.regions.serializers import RegionSerializer
 from apps.users.models import User
 
 from .models import Block, Report
@@ -45,9 +46,13 @@ class BlockCreateSerializer(serializers.Serializer[Any]):
 
 
 class BlockedUserSerializer(serializers.ModelSerializer[User]):
+    residence = RegionSerializer(
+        read_only=True, help_text="상대의 거주 지역. 차단 카드의 「경북 경주」. 설정 전이면 null"
+    )
+
     class Meta:
         model = User
-        fields = ["id", "nickname"]
+        fields = ["id", "nickname", "residence"]
         read_only_fields = fields
 
 
