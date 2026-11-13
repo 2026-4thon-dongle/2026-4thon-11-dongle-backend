@@ -11,7 +11,7 @@ from apps.stamps.services import FIRST_DIARY
 from config.exceptions import ApiError
 
 from .models import EmailVerification, User
-from .verification import is_school_email
+from .verification import is_school_email, school_name_of
 
 NICKNAME_MIN_LENGTH = 2
 NICKNAME_MAX_LENGTH = 10
@@ -112,6 +112,9 @@ class UserSerializer(serializers.ModelSerializer[User]):
     school_verified = serializers.SerializerMethodField(
         help_text="학교 메일 인증 여부. 메일 인증으로만 가입하므로 항상 true"
     )
+    school_name = serializers.SerializerMethodField(
+        help_text="메일 도메인으로 찾은 학교 약칭(예: 성신여대). 참가 대학이 아니면 null"
+    )
     first_diary_completed = serializers.SerializerMethodField(
         help_text="첫 일기를 썼는지. false면 첫 일기 작성 안내를 보여 준다."
     )
@@ -123,6 +126,7 @@ class UserSerializer(serializers.ModelSerializer[User]):
             "email",
             "nickname",
             "school_verified",
+            "school_name",
             "hometowns",
             "residence",
             "first_diary_completed",
@@ -135,6 +139,9 @@ class UserSerializer(serializers.ModelSerializer[User]):
 
     def get_school_verified(self, user: User) -> bool:
         return True
+
+    def get_school_name(self, user: User) -> str | None:
+        return school_name_of(user.email)
 
     def get_first_diary_completed(self, user: User) -> bool:
         return UserStamp.objects.filter(user=user, stamp__code=FIRST_DIARY).exists()
