@@ -16,6 +16,7 @@ from apps.stamps.models import UserStamp
 from apps.stamps.services import FIRST_STEP, grant_stamp
 
 from .models import EmailVerification, TermsAgreement, User
+from .verification import school_name_of
 
 EMAIL = "Student@skuniv.ac.kr"
 NORMALIZED_EMAIL = "student@skuniv.ac.kr"
@@ -240,8 +241,15 @@ class MeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["hometowns"][0]["name"], "서울특별시")
         self.assertTrue(response.data["school_verified"])
+        self.assertEqual(response.data["school_name"], "서경대")
         self.assertEqual(response.data["stats"]["stamp_count"], 1)
         self.assertEqual(response.data["stats"]["diary_count"], 0)
+
+    def test_school_name_by_email_domain(self) -> None:
+        self.assertEqual(school_name_of("a@cs.sungshin.ac.kr"), "성신여대")
+        self.assertEqual(school_name_of("a@SKUNIV.AC.KR"), "서경대")
+        self.assertIsNone(school_name_of("a@snu.ac.kr"))
+        self.assertIsNone(school_name_of("a@notsungshin.ac.kr"))
 
     def test_nickname_change(self) -> None:
         make_user("b@skuniv.ac.kr", "사용중")
@@ -272,6 +280,15 @@ class MeTests(TestCase):
         response = self.client.patch(url, {"letter_paused": True}, format="json")
         self.assertTrue(response.data["letter_paused"])
         self.assertTrue(response.data["weekly_prompt_enabled"])
+
+    def test_settings_letter_push_toggles(self) -> None:
+        url = reverse("me-settings")
+        data = self.client.get(url).data
+        self.assertTrue(data["letter_arrival_push_enabled"])
+        self.assertTrue(data["letter_departure_push_enabled"])
+        response = self.client.patch(url, {"letter_departure_push_enabled": False}, format="json")
+        self.assertFalse(response.data["letter_departure_push_enabled"])
+        self.assertTrue(response.data["letter_arrival_push_enabled"])
 
     def test_withdraw_removes_data_and_invalidates_tokens(self) -> None:
         grant_stamp(self.user, FIRST_STEP)

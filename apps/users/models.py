@@ -39,6 +39,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     push_enabled = models.BooleanField(default=True)
     daily_digest_enabled = models.BooleanField(default=False)
     weekly_prompt_enabled = models.BooleanField(default=True)
+    letter_arrival_push_enabled = models.BooleanField(default=True)
+    letter_departure_push_enabled = models.BooleanField(default=True)
 
     objects = UserManager()
 
