@@ -11,9 +11,9 @@ from .models import Block, Report
 class ReportCreateSerializer(serializers.Serializer[Any]):
     target_type = serializers.ChoiceField(
         choices=Report.TargetType.choices,
-        help_text="신고 대상 종류. diary: 일기 / user: 사용자 / letter: 편지(아직 미지원)",
+        help_text="신고 대상 종류. diary: 일기 / user: 사용자 / letter: 받은 편지",
     )
-    target_id = serializers.IntegerField(min_value=1, help_text="신고 대상(일기·사용자)의 id")
+    target_id = serializers.IntegerField(min_value=1, help_text="신고 대상(일기·사용자·편지)의 id")
     reason = serializers.ChoiceField(
         choices=Report.Reason.choices,
         help_text="abuse: 욕설 · 비하 / sexual: 성적인 내용 / "
