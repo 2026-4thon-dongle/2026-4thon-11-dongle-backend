@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -288,14 +289,22 @@ class MeView(APIView):
         summary="회원 탈퇴",
         description=(
             "계정을 바로 지운다. 내가 쓴 일기와 사진, 받은 우표, 알림 등 내 데이터도 함께 "
-            "지워지며 되돌릴 수 없다."
+            "지워지며 되돌릴 수 없다. 주고받은 편지와 대화도 지워져 상대 우체통에서도 사라진다."
         ),
         responses={204: OpenApiResponse(description="탈퇴 완료")},
     )
     def delete(self, request: Request) -> Response:
         """탈퇴하면 일기·우표 등 소유 데이터를 함께 지운다 (AUTH-11)."""
+        # letters가 users를 쓰므로 순환 import를 피해 여기서 불러온다.
+        from apps.letters.models import Letter
+
         user = cast(User, request.user)
         images = [diary.image for diary in user.diaries.exclude(image="").exclude(image=None)]
+        # 내가 주고받은 편지는 대화와 함께 지워지므로 손글씨 이미지도 지운다.
+        letters = Letter.objects.filter(Q(sender=user) | Q(recipient=user))
+        images += [
+            letter.signature for letter in letters.exclude(signature="").exclude(signature=None)
+        ]
         with transaction.atomic():
             for image in images:
                 storage, name = image.storage, str(image.name)
