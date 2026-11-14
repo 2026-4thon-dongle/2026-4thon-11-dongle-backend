@@ -130,11 +130,13 @@ class UserSerializer(serializers.ModelSerializer[User]):
             "hometowns",
             "residence",
             "first_diary_completed",
+            "avatar",
         ]
         read_only_fields = fields
         extra_kwargs = {
             "email": {"help_text": "가입한 학교 메일. 본인에게만 내려준다."},
             "nickname": {"help_text": "닉네임"},
+            "avatar": {"help_text": "프로필 고향이 표정 code. 예: cat-wink (가입 때 무작위)"},
         }
 
     def get_school_verified(self, user: User) -> bool:
