@@ -136,6 +136,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "신고·차단", "description": "신고, 차단, 연락처 노출 검사"},
         {"name": "알림", "description": "알림 센터, 푸시 토큰"},
         {"name": "편지", "description": "편지 쓰기 재료, 배송 시간, 편지 보내기"},
+        {"name": "우체통", "description": "우체통 탭, 편지 열람·넘기기, 대화 기록, 펜팔 친구"},
         {"name": "우표", "description": "우표첩, 우표 상세, 수집 보상"},
     ],
 }
