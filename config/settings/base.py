@@ -35,6 +35,7 @@ LOCAL_APPS: list[str] = [
     "apps.moderations",
     "apps.diaries",
     "apps.notifications",
+    "apps.letters",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -144,3 +145,7 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="동글 <no-reply@dongle.
 
 # 약관을 고치면 올린다. 동의 시점의 버전을 TermsAgreement에 저장한다.
 TERMS_VERSION = "2026-11-09"
+
+# 느린 편지 도착 시간. 같은 시·도 1시간 / 인접 3시간 / 300km 미만 6시간 / 그 이상·제주 12시간.
+# 시연 때 True로 두면 모든 편지가 1분 뒤 도착한다.
+LETTER_DEMO_MODE = env.bool("LETTER_DEMO_MODE", default=False)
