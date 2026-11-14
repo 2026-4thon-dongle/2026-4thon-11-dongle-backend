@@ -135,6 +135,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "일기", "description": "고향 일기 작성·조회·수정·삭제, 오늘의 글감"},
         {"name": "신고·차단", "description": "신고, 차단, 연락처 노출 검사"},
         {"name": "알림", "description": "알림 센터, 푸시 토큰"},
+        {"name": "편지", "description": "편지 쓰기 재료, 배송 시간, 편지 보내기"},
         {"name": "우표", "description": "우표첩, 우표 상세, 수집 보상"},
     ],
 }
