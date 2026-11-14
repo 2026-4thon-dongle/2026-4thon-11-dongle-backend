@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Conversation, Letter
+from .models import Conversation, Draft, Letter
 
 
 @admin.register(Conversation)
@@ -16,3 +16,9 @@ class LetterAdmin(admin.ModelAdmin):
     list_display = ["id", "sender_nickname", "recipient_nickname", "band", "sent_at", "arrives_at"]
     list_filter = ["band", "is_first"]
     raw_id_fields = ["conversation", "sender", "recipient", "reply_to"]
+
+
+@admin.register(Draft)
+class DraftAdmin(admin.ModelAdmin):
+    list_display = ["id", "owner", "diary", "reply_to", "saved_at"]
+    raw_id_fields = ["owner", "diary", "reply_to"]

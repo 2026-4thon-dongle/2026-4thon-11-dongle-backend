@@ -30,6 +30,7 @@ from .serializers import (
     MaterialsSerializer,
 )
 from .services import (
+    discard_drafts,
     find_diary_for_letter,
     find_received_letter,
     route_between,
@@ -210,6 +211,7 @@ class LetterSendView(APIView):
             stamp=stamp,
         )
         letter = result.letter
+        discard_drafts(user, diary=diary, reply_to=reply_to, draft_id=data.get("draft_id"))
         unlocked = reward_unlocked_at(user)
         seen = seen_reward_codes(user)
         payload = {

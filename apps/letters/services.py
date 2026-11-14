@@ -31,7 +31,7 @@ from apps.users.models import User
 from config.exceptions import ApiError
 
 from .delivery import FAR, band_between, duration_minutes
-from .models import CLOSE_AFTER, Conversation, Letter
+from .models import CLOSE_AFTER, Conversation, Draft, Letter
 from .notifications import notify_departed
 
 PENPAL_ROUND_TRIPS = 3
@@ -238,6 +238,16 @@ def send_letter(
     notify_departed(letter)
     after = owned_count(sender)
     return SendResult(letter, granted, rewards_unlocked_between(before, after))
+
+
+def discard_drafts(
+    owner: User, *, diary: Diary | None, reply_to: Letter | None, draft_id: int | None
+) -> None:
+    """보낸 편지의 임시저장을 지운다. 이어 쓴 임시저장과 같은 대상의 임시저장이다."""
+    target = Q(diary=diary) if diary is not None else Q(reply_to=reply_to)
+    if draft_id is not None:
+        target |= Q(id=draft_id)
+    Draft.objects.filter(target, owner=owner).delete()
 
 
 def _grant_pair_stamps(sender: User, recipient: User) -> list[Stamp]:
