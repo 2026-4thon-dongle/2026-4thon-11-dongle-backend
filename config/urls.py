@@ -17,6 +17,7 @@ urlpatterns = [
     path("api/letters/", include("apps.letters.urls")),
     path("api/mailbox/", include("apps.letters.mailbox_urls")),
     path("api/penpals/", PenpalListView.as_view(), name="penpal-list"),
+    path("api/feed/", include("apps.feeds.urls")),
     path("api/regions/", include("apps.regions.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
