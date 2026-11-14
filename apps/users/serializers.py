@@ -194,7 +194,7 @@ class MeStatsSerializer(serializers.Serializer[Any]):
     )
     stamp_count = serializers.IntegerField(help_text="모은 우표 수")
     penpal_count = serializers.IntegerField(help_text="펜팔 친구 수 (같은 사람과 왕복 3회 이상)")
-    draft_count = serializers.IntegerField(help_text="임시 저장한 편지 수 (기능 전까지 0)")
+    draft_count = serializers.IntegerField(help_text="임시 저장한 편지 수")
 
 
 class MeSerializer(UserSerializer):
@@ -208,7 +208,7 @@ class MeSerializer(UserSerializer):
     def get_stats(self, user: User) -> dict[str, int]:
         # letters가 users를 쓰므로 순환 import를 피해 여기서 불러온다.
         from apps.letters.mailbox import penpals
-        from apps.letters.models import Letter
+        from apps.letters.models import Draft, Letter
 
         now = timezone.now()
         letters = Letter.objects.filter(Q(sender=user) | Q(recipient=user, arrives_at__lte=now))
@@ -217,8 +217,7 @@ class MeSerializer(UserSerializer):
             "stamp_count": user.stamps.count(),
             "letter_count": letters.count(),
             "penpal_count": len(penpals(user, now)),
-            # 임시저장이 생기면 실제 값으로 바꾼다.
-            "draft_count": 0,
+            "draft_count": Draft.objects.filter(owner=user).count(),
         }
 
 

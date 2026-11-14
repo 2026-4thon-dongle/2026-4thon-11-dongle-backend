@@ -9,6 +9,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.diaries.models import Diary
+from apps.letters.mailbox import preview
+from apps.letters.models import Draft
 from apps.letters.services import route_between
 from apps.regions.models import Region
 from apps.regions.serializers import RegionWithSidoSerializer
@@ -169,5 +171,11 @@ class FeedDiaryDetailView(APIView):
                     "duration_minutes": route.duration_minutes,
                     "arrives_at": route.arrives_at(timezone.now()),
                 }
-        context = {"request": request, "delivery": delivery, "my_draft": None}
+        draft = Draft.objects.filter(owner=viewer, diary=diary).first()
+        my_draft = (
+            {"id": draft.id, "body_preview": preview(draft.body), "saved_at": draft.saved_at}
+            if draft is not None
+            else None
+        )
+        context = {"request": request, "delivery": delivery, "my_draft": my_draft}
         return Response(FeedDiaryDetailSerializer(diary, context=context).data)
