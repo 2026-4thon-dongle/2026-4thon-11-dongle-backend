@@ -5,7 +5,7 @@
 - 브랜치: `feat/letter-integration`
 - 기준 커밋: `a8f6d7b`
 - 상태: 진행 중
-- 관련 PR: 미정
+- 관련 PR: PR12
 
 ## 지금 작업 내용
 
