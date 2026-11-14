@@ -76,9 +76,11 @@ class ReportTests(TestCase):
         self.assertEqual(self.report(reason="etc").status_code, 400)
         self.assertEqual(self.report(reason="etc", detail="이유").status_code, 201)
 
-    def test_letter_target_not_supported_yet(self) -> None:
-        response = self.report(target_type="letter", target_id=1)
-        self.assertEqual(response.data["code"], "UNSUPPORTED_REPORT_TARGET")
+    def test_unknown_letter_is_not_found(self) -> None:
+        # 편지 신고 동작은 apps/letters/tests_integration.py에서 확인한다.
+        response = self.report(target_type="letter", target_id=999999)
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.data["code"], "TARGET_NOT_FOUND")
 
     def test_private_diary_is_not_found(self) -> None:
         self.diary.visibility = Diary.Visibility.PRIVATE

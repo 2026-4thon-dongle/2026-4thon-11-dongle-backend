@@ -80,6 +80,8 @@ class Letter(models.Model):
     sent_at = models.DateTimeField(default=timezone.now)
     arrives_at = models.DateTimeField()
     read_at = models.DateTimeField(null=True, blank=True)
+    # 도착 알림을 만든 시각. 한 편지에 한 번만 만든다.
+    arrival_notified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["sent_at", "id"]
