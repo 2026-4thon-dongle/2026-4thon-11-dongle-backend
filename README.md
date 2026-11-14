@@ -35,6 +35,10 @@ python manage.py runserver
 
 매주 월요일 글감 알림은 스케줄러로 `python manage.py create_weekly_prompt_notifications`를 실행한다.
 
+편지 도착 알림은 스케줄러로 1분마다 `python manage.py notify_arrived_letters`를 실행한다. 스케줄러가 없어도 알림 목록·안 읽은 수를 조회할 때 그 사용자의 도착 알림이 만들어진다.
+
+편지 배송 시간을 모두 1분으로 줄이려면(데모) `.env`에 `LETTER_DEMO_MODE=true`를 넣는다.
+
 ## 검사
 
 ```bash
