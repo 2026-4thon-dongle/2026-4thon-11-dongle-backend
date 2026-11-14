@@ -4,6 +4,8 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from apps.letters.mailbox_views import PenpalListView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("apps.users.auth_urls")),
@@ -13,6 +15,8 @@ urlpatterns = [
     path("api/notifications/", include("apps.notifications.urls")),
     path("api/stamps/", include("apps.stamps.urls")),
     path("api/letters/", include("apps.letters.urls")),
+    path("api/mailbox/", include("apps.letters.mailbox_urls")),
+    path("api/penpals/", PenpalListView.as_view(), name="penpal-list"),
     path("api/regions/", include("apps.regions.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
