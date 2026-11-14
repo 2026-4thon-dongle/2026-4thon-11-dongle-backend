@@ -95,3 +95,52 @@ class Letter(models.Model):
 
     def has_arrived(self, now: datetime | None = None) -> bool:
         return self.arrives_at <= (now or timezone.now())
+
+
+class Draft(models.Model):
+    """쓰던 편지 (LETTER-11). 대상(일기 또는 받은 편지)마다 1통. 서명·스티커·우표는 두지 않는다."""
+
+    class Kind(models.TextChoices):
+        FIRST = "first", "첫 편지"
+        REPLY = "reply", "답장"
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="letter_drafts"
+    )
+    diary = models.ForeignKey(
+        Diary, null=True, blank=True, on_delete=models.CASCADE, related_name="+"
+    )
+    reply_to = models.ForeignKey(
+        Letter, null=True, blank=True, on_delete=models.CASCADE, related_name="+"
+    )
+    body = models.CharField(max_length=BODY_MAX_LENGTH, blank=True)
+    stationery = models.CharField(max_length=30, blank=True)
+    font = models.CharField(max_length=30, blank=True)
+    saved_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-saved_at", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(diary__isnull=False, reply_to__isnull=True)
+                | models.Q(diary__isnull=True, reply_to__isnull=False),
+                name="draft_one_target",
+            ),
+            models.UniqueConstraint(
+                fields=["owner", "diary"],
+                condition=models.Q(diary__isnull=False),
+                name="uniq_draft_owner_diary",
+            ),
+            models.UniqueConstraint(
+                fields=["owner", "reply_to"],
+                condition=models.Q(reply_to__isnull=False),
+                name="uniq_draft_owner_reply_to",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.owner} draft ({self.kind})"
+
+    @property
+    def kind(self) -> str:
+        return self.Kind.FIRST if self.diary_id is not None else self.Kind.REPLY
