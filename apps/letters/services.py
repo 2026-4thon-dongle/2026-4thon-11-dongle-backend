@@ -32,6 +32,7 @@ from config.exceptions import ApiError
 
 from .delivery import FAR, band_between, duration_minutes
 from .models import CLOSE_AFTER, Conversation, Letter
+from .notifications import notify_departed
 
 PENPAL_ROUND_TRIPS = 3
 HANDWRITING_MASTER_COUNT = 10
@@ -234,6 +235,7 @@ def send_letter(
         code = "ALREADY_REPLIED" if reply_to is not None else "ALREADY_SENT"
         raise _error(code, "이미 보낸 편지입니다.", status.HTTP_409_CONFLICT) from exc
 
+    notify_departed(letter)
     after = owned_count(sender)
     return SendResult(letter, granted, rewards_unlocked_between(before, after))
 
