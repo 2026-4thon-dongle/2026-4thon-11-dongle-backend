@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.core.files.uploadedfile import UploadedFile
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.regions.serializers import RegionSerializer
@@ -25,7 +26,7 @@ class DiarySerializer(serializers.ModelSerializer[Diary]):
     author = AuthorSerializer(read_only=True, help_text="작성자")
     region = RegionSerializer(read_only=True, help_text="일기를 쓴 지역 (작성 당시 거주 지역)")
     received_letter_count = serializers.SerializerMethodField(
-        help_text="이 일기로 받은 편지 수 (편지 기능 전까지 0)"
+        help_text="이 일기로 받은 편지 수 (도착한 첫 편지만 센다)"
     )
 
     class Meta:
@@ -56,8 +57,13 @@ class DiarySerializer(serializers.ModelSerializer[Diary]):
         }
 
     def get_received_letter_count(self, diary: Diary) -> int:
-        # letters 앱이 생기면 일기별 받은 편지 수로 바꾼다 (DIARY-07).
-        return 0
+        # letters가 diaries를 쓰므로 순환 import를 피해 여기서 불러온다.
+        from apps.letters.models import Letter
+
+        # 이 일기에 도착한 첫 편지 수. 배송 중인 편지는 세지 않는다 (DIARY-07).
+        return Letter.objects.filter(
+            conversation__diary=diary, is_first=True, arrives_at__lte=timezone.now()
+        ).count()
 
 
 class DiaryWriteSerializer(serializers.ModelSerializer[Diary]):
