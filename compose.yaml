@@ -1,0 +1,81 @@
+# 홈서버 호스팅 플랫폼(TwoMES Hosting) 배포용. 로컬에서 확인하려면 .env에 아래 값을 넣고
+# `docker compose up --build`를 실행한다 (README 「홈서버 배포」).
+# 호스트 포트(ports:)는 열지 않는다. 외부 공개는 플랫폼의 도메인 설정이 한다 (api 8000, mailpit 8025).
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dongle
+      POSTGRES_USER: dongle
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 필요}
+    volumes:
+      - ${HOSTING_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dongle -d dongle"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # 가상 메일함. 인증 메일이 여기 쌓이고 웹 화면(8025)에서 코드를 본다. SMTP(1025)는 api에서만 쓴다.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: "500"
+
+  # 한 번 돌고 끝난다. 업로드 폴더의 소유자를 앱 사용자(1000)로 맞춘다.
+  init-media:
+    image: busybox:stable
+    restart: "no"
+    command: ["sh", "-c", "mkdir -p /media && chown -R 1000:1000 /media"]
+    volumes:
+      - ${HOSTING_DATA_DIR:-./data}/media:/media
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      init-media:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    env_file:
+      - path: .env # 플랫폼이 배포 때 써 준다. 로컬에서는 직접 만든다
+        required: false
+    environment:
+      DATABASE_URL: postgres://dongle:${POSTGRES_PASSWORD}@db:5432/dongle
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+      MEDIA_ROOT: /app/media
+      SERVE_MEDIA: "true"
+    volumes:
+      - ${HOSTING_DATA_DIR:-./data}/media:/app/media
+    command:
+      - sh
+      - -c
+      - python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile -
+
+  # 편지 도착 알림을 1분마다 만든다. 알림을 조회할 때도 만들어지므로 늦어져도 알림이 빠지지는 않는다.
+  notifier:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://dongle:${POSTGRES_PASSWORD}@db:5432/dongle
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+    healthcheck:
+      disable: true
+    command:
+      - sh
+      - -c
+      - while true; do python manage.py notify_arrived_letters; sleep 60; done
