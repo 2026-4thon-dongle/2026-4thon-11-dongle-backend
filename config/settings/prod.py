@@ -8,6 +8,13 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 DATABASES = {"default": env.db("DATABASE_URL")}
 
+# 정적 파일(admin, Swagger)은 whitenoise가 준다. collectstatic은 이미지를 빌드할 때 돌린다.
+MIDDLEWARE = [MIDDLEWARE[0], "whitenoise.middleware.WhiteNoiseMiddleware", *MIDDLEWARE[1:]]
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
