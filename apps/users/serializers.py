@@ -1,5 +1,7 @@
 from typing import Any
 
+from django.db.models import Q
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers, status
 
@@ -130,11 +132,13 @@ class UserSerializer(serializers.ModelSerializer[User]):
             "hometowns",
             "residence",
             "first_diary_completed",
+            "avatar",
         ]
         read_only_fields = fields
         extra_kwargs = {
             "email": {"help_text": "가입한 학교 메일. 본인에게만 내려준다."},
             "nickname": {"help_text": "닉네임"},
+            "avatar": {"help_text": "프로필 고향이 표정 code. 예: cat-wink (가입 때 무작위)"},
         }
 
     def get_school_verified(self, user: User) -> bool:
@@ -185,10 +189,12 @@ class LogoutSerializer(serializers.Serializer[Any]):
 
 class MeStatsSerializer(serializers.Serializer[Any]):
     diary_count = serializers.IntegerField(help_text="쓴 일기 수")
-    letter_count = serializers.IntegerField(help_text="편지 수 (편지 기능 전까지 0)")
+    letter_count = serializers.IntegerField(
+        help_text="주고받은 편지 수 (보낸 편지 + 도착한 받은 편지)"
+    )
     stamp_count = serializers.IntegerField(help_text="모은 우표 수")
-    penpal_count = serializers.IntegerField(help_text="펜팔 친구 수 (기능 전까지 0)")
-    draft_count = serializers.IntegerField(help_text="임시 저장한 편지 수 (기능 전까지 0)")
+    penpal_count = serializers.IntegerField(help_text="펜팔 친구 수 (같은 사람과 왕복 3회 이상)")
+    draft_count = serializers.IntegerField(help_text="임시 저장한 편지 수")
 
 
 class MeSerializer(UserSerializer):
@@ -200,13 +206,18 @@ class MeSerializer(UserSerializer):
 
     @extend_schema_field(MeStatsSerializer)
     def get_stats(self, user: User) -> dict[str, int]:
+        # letters가 users를 쓰므로 순환 import를 피해 여기서 불러온다.
+        from apps.letters.mailbox import penpals
+        from apps.letters.models import Draft, Letter
+
+        now = timezone.now()
+        letters = Letter.objects.filter(Q(sender=user) | Q(recipient=user, arrives_at__lte=now))
         return {
             "diary_count": user.diaries.count(),
             "stamp_count": user.stamps.count(),
-            # letters 앱이 생기면 실제 값으로 바꾼다 (SET-01).
-            "letter_count": 0,
-            "penpal_count": 0,
-            "draft_count": 0,
+            "letter_count": letters.count(),
+            "penpal_count": len(penpals(user, now)),
+            "draft_count": Draft.objects.filter(owner=user).count(),
         }
 
 

@@ -1,3 +1,4 @@
+import random
 from typing import Any
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
@@ -5,6 +6,21 @@ from django.db import models
 from django.utils import timezone
 
 from apps.regions.models import Region
+
+# 프로필 자리에 쓰는 고향이 표정 (5-3, 5-14, 7-12). 가입 때 무작위로 정해 고정한다(가정).
+AVATARS = [
+    "cat-basic",
+    "cat-smile",
+    "cat-sparkle",
+    "cat-shy",
+    "cat-wink",
+    "cat-heart",
+    "cat-curious",
+]
+
+
+def random_avatar() -> str:
+    return random.choice(AVATARS)
 
 
 class UserManager(BaseUserManager["User"]):
@@ -27,6 +43,7 @@ class UserManager(BaseUserManager["User"]):
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     nickname = models.CharField(max_length=10, unique=True)
+    avatar = models.CharField(max_length=20, default=random_avatar)
     hometowns = models.ManyToManyField(Region, related_name="hometown_users", blank=True)
     residence = models.ForeignKey(
         Region, null=True, blank=True, on_delete=models.PROTECT, related_name="residents"

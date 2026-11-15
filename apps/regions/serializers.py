@@ -54,3 +54,16 @@ class RegionTreeSerializer(serializers.ModelSerializer[Region]):
                 "help_text": "시·도 자체를 거주 지역으로 고를 수 있는지 (세종 등)"
             },
         }
+
+
+class RegionWithSidoSerializer(RegionSerializer):
+    """소인·배송 표시에 쓰는 지역 요약. sido는 시·도 약칭."""
+
+    sido = serializers.SerializerMethodField(help_text="시·도 약칭. 예: 충남")
+
+    class Meta(RegionSerializer.Meta):
+        fields = [*RegionSerializer.Meta.fields, "sido"]
+        read_only_fields = fields
+
+    def get_sido(self, region: Region) -> str:
+        return (region.parent or region).short_name

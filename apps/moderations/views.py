@@ -3,6 +3,7 @@ from typing import cast
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.request import Request
@@ -36,8 +37,19 @@ def _resolve_report_target(reporter: User, target_type: str, target_id: int) -> 
         target_user = diary.author if diary else None
     elif target_type == Report.TargetType.USER:
         target_user = User.objects.filter(id=target_id).first()
+    elif target_type == Report.TargetType.LETTER:
+        # letters가 moderations를 쓰므로 순환 import를 피해 여기서 불러온다.
+        from apps.letters.models import Letter
+
+        # 내가 받았고 이미 도착한 편지만 신고할 수 있다. 대상은 보낸 사람이다.
+        letter = (
+            Letter.objects.filter(id=target_id, recipient=reporter, arrives_at__lte=timezone.now())
+            .select_related("sender")
+            .first()
+        )
+        target_user = letter.sender if letter else None
     else:
-        raise ApiError("UNSUPPORTED_REPORT_TARGET", "편지 신고는 편지 기능 연결 후 지원합니다.")
+        raise ApiError("UNSUPPORTED_REPORT_TARGET", "지원하지 않는 신고 대상입니다.")
 
     if target_user is None:
         raise ApiError(
@@ -53,8 +65,8 @@ class ReportCreateView(APIView):
     @extend_schema(
         summary="신고하기",
         description=(
-            "일기나 사용자를 신고한다. 편지 신고(`target_type=letter`)는 편지 기능이 붙은 뒤 "
-            "지원한다.\n\n"
+            "일기, 사용자, 편지를 신고한다. 편지(`target_type=letter`)는 내가 받아서 도착한 "
+            "편지만 신고할 수 있고, 신고 대상 사용자는 보낸 사람이다.\n\n"
             "- 신고한 일기, 신고한 사용자의 일기는 그 뒤로 내 피드에 보이지 않는다.\n"
             f"- 한 일기가 신고 {HIDE_THRESHOLD}건을 넘으면 모두에게서 숨겨진다.\n"
             "- `reason=etc`이면 `detail`에 사유를 꼭 적어야 한다.\n"
@@ -65,7 +77,7 @@ class ReportCreateView(APIView):
             201: ReportResultSerializer,
             400: error_response(
                 "`CANNOT_REPORT_SELF`: 내 글·내 계정 신고 / "
-                "`UNSUPPORTED_REPORT_TARGET`: 아직 지원하지 않는 편지 신고 / "
+                "`UNSUPPORTED_REPORT_TARGET`: 지원하지 않는 신고 대상 / "
                 "`VALIDATION_ERROR`: 기타 사유 미입력 등"
             ),
             404: error_response("`TARGET_NOT_FOUND`: 없거나 내가 볼 수 없는 신고 대상"),

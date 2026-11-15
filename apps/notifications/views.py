@@ -9,6 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.letters.notifications import notify_arrived_letters
 from apps.users.models import User
 from config.schema import error_response
 
@@ -27,7 +28,9 @@ class NotificationListView(generics.ListAPIView[Notification]):
     serializer_class = NotificationSerializer
 
     def get_queryset(self) -> QuerySet[Notification]:
-        return Notification.objects.filter(user=cast(User, self.request.user))
+        user = cast(User, self.request.user)
+        notify_arrived_letters(user)
+        return Notification.objects.filter(user=user)
 
 
 @extend_schema(tags=["알림"])
@@ -38,7 +41,9 @@ class UnreadCountView(APIView):
         responses={200: UnreadCountSerializer},
     )
     def get(self, request: Request) -> Response:
-        count = Notification.objects.filter(user=cast(User, request.user), read_at=None).count()
+        user = cast(User, request.user)
+        notify_arrived_letters(user)
+        count = Notification.objects.filter(user=user, read_at=None).count()
         return Response({"unread_count": count})
 
 

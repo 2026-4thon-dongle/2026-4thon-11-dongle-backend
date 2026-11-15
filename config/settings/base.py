@@ -35,6 +35,8 @@ LOCAL_APPS: list[str] = [
     "apps.moderations",
     "apps.diaries",
     "apps.notifications",
+    "apps.letters",
+    "apps.feeds",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -134,6 +136,10 @@ SPECTACULAR_SETTINGS = {
         {"name": "일기", "description": "고향 일기 작성·조회·수정·삭제, 오늘의 글감"},
         {"name": "신고·차단", "description": "신고, 차단, 연락처 노출 검사"},
         {"name": "알림", "description": "알림 센터, 푸시 토큰"},
+        {"name": "피드", "description": "고향 ↔ 타지 피드, 전체 타지 피드, 피드 일기 상세"},
+        {"name": "편지", "description": "편지 쓰기 재료, 배송 시간, 편지 보내기"},
+        {"name": "우체통", "description": "우체통 탭, 편지 열람·넘기기, 대화 기록, 펜팔 친구"},
+        {"name": "우표", "description": "우표첩, 우표 상세, 수집 보상"},
     ],
 }
 
@@ -143,3 +149,7 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="동글 <no-reply@dongle.
 
 # 약관을 고치면 올린다. 동의 시점의 버전을 TermsAgreement에 저장한다.
 TERMS_VERSION = "2026-11-09"
+
+# 느린 편지 도착 시간. 같은 시·도 1시간 / 인접 3시간 / 300km 미만 6시간 / 그 이상·제주 12시간.
+# 시연 때 True로 두면 모든 편지가 1분 뒤 도착한다.
+LETTER_DEMO_MODE = env.bool("LETTER_DEMO_MODE", default=False)
