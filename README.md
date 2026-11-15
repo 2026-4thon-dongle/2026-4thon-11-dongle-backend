@@ -31,7 +31,21 @@ python manage.py runserver
 - API 문서(Swagger): http://localhost:8000/api/docs/
 - Admin: http://localhost:8000/admin/
 
-`migrate`가 지역·우표·글감 기본 데이터도 함께 넣는다. 로컬에서는 인증 코드가 `runserver` 콘솔에 출력된다.
+`migrate`가 지역·우표·글감 기본 데이터도 함께 넣는다.
+
+### 인증 메일 확인
+
+실제 메일 대신 가상 메일함 [Mailpit](https://mailpit.axllent.org/)을 쓴다. 어떤 주소로 보낸 메일이든 Mailpit 웹 화면에 쌓이므로 실제 학교 메일이나 도메인 없이 `test1@skuniv.ac.kr` 같은 주소로 가입을 시험할 수 있다.
+
+```bash
+# Mailpit 실행 (둘 중 하나). SMTP 1025, 웹 화면 8025
+docker run -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit
+brew install mailpit && mailpit
+```
+
+`.env`에 `EMAIL_HOST=localhost`, `EMAIL_PORT=1025`를 넣고 runserver를 띄운 뒤, 인증 코드를 http://localhost:8025 에서 확인한다. `EMAIL_HOST`를 비워 두면 인증 코드가 `runserver` 콘솔에 출력된다.
+
+배포 서버에서도 같은 방식으로 Mailpit을 띄우고 `EMAIL_HOST`를 Mailpit 주소로 넣는다. 시연 때는 Mailpit 웹 화면(8025)을 열어 두고 코드를 확인한다. 웹 화면은 누구나 메일을 볼 수 있으므로 외부에 열 때는 Mailpit의 `--ui-auth-file`로 비밀번호를 건다.
 
 매주 월요일 글감 알림은 스케줄러로 `python manage.py create_weekly_prompt_notifications`를 실행한다.
 
