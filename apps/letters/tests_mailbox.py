@@ -73,6 +73,11 @@ class MailboxTests(TestCase):
         summary = self.get(self.host_api, "mailbox-summary")
         self.assertEqual((summary["new_count"], summary["new_unread_count"]), (1, 0))
 
+        sent = self.guest_api.get(reverse("letter-detail", args=[letter["id"]]))
+        self.assertEqual((sent.data["direction"], sent.data["is_read"]), ("sent", False))
+        received = self.host_api.get(reverse("letter-detail", args=[letter["id"]]))
+        self.assertTrue(received.data["is_read"])
+
         not_mine = self.guest_api.post(reverse("letter-open", args=[letter["id"]]))
         self.assertEqual(not_mine.status_code, 404)
         self.assertEqual(
