@@ -12,6 +12,9 @@ from .models import BODY_MAX_LENGTH, Letter
 
 SIGNATURE_MAX_BYTES = 1024 * 1024
 STICKERS_MAX = 5
+STICKER_DEFAULT_SCALE = 0.18
+STICKER_SCALE_MIN = 0.05
+STICKER_SCALE_MAX = 0.5
 DEFAULT_FONT = "nanum-pen"
 STATIONERY_CODES = [item.code for item in STATIONERIES]
 FONT_CODES = [item.code for item in FONTS]
@@ -38,8 +41,9 @@ class LetterWriteSerializer(serializers.Serializer[Any]):
     stickers = serializers.JSONField(
         required=False,
         default=list,
-        help_text='붙인 스티커. [{"code": "cat-wink", "x": 0.7, "y": 0.8, "rotation": -8}] '
-        "최대 5개. multipart로 보낼 때는 JSON 문자열",
+        help_text='붙인 스티커. [{"code": "cat-wink", "x": 0.7, "y": 0.8, "rotation": -8, '
+        '"scale": 0.18}] 최대 5개. `scale`은 편지지 너비 대비 스티커 너비 비율(0.05~0.5, '
+        "생략하면 0.18). multipart로 보낼 때는 JSON 문자열",
     )
     stamp = serializers.CharField(help_text="붙일 우표 code (보유한 우표)")
     draft_id = serializers.IntegerField(
@@ -68,11 +72,16 @@ class LetterWriteSerializer(serializers.Serializer[Any]):
             try:
                 code, x, y = sticker["code"], float(sticker["x"]), float(sticker["y"])
                 rotation = float(sticker.get("rotation", 0))
+                scale = float(sticker.get("scale", STICKER_DEFAULT_SCALE))
             except (TypeError, KeyError, ValueError) as exc:
                 raise serializers.ValidationError("스티커 형식이 올바르지 않습니다.") from exc
             if code not in STICKER_CODES or not (0 <= x <= 1 and 0 <= y <= 1):
                 raise serializers.ValidationError("스티커 형식이 올바르지 않습니다.")
-            cleaned.append({"code": code, "x": x, "y": y, "rotation": rotation})
+            if not (STICKER_SCALE_MIN <= scale <= STICKER_SCALE_MAX):
+                raise serializers.ValidationError(
+                    f"스티커 크기(scale)는 {STICKER_SCALE_MIN}~{STICKER_SCALE_MAX} 사이여야 합니다."
+                )
+            cleaned.append({"code": code, "x": x, "y": y, "rotation": rotation, "scale": scale})
         return cleaned
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:

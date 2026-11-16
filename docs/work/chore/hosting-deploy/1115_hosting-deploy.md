@@ -5,7 +5,7 @@
 - 브랜치: `chore/hosting-deploy`
 - 기준 커밋: `3fe3d8a`
 - 상태: 진행 중
-- 관련 PR: 미정
+- 관련 PR: [#18](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/18)
 
 ## 지금 작업 내용
 
@@ -57,11 +57,12 @@
 | 2026-11-15 | 작업 설계 작성. 원격에 `dev` 브랜치가 없어(PR #15 병합 후 자동 삭제) `main`(`3fe3d8a`)에서 분기. PR 대상은 사용자 결정 대기 |
 | 2026-11-16 | gunicorn·whitenoise, prod 설정(정적 파일, `MEDIA_ROOT`, `SERVE_MEDIA`, `CSRF_TRUSTED_ORIGINS`), Dockerfile, `compose.yaml`, README 구현. 로컬 docker로 5개 서비스가 healthy로 뜨는 것과 Swagger·정적 파일·미디어·잘못된 Host 거절을 확인. PostgreSQL에서 테스트 133개 중 132개 통과(나머지 1개 `test_first_letter`는 자정~새벽 시간대에 새벽 우표가 같이 지급돼 실패하는 시간 의존 테스트) |
 | 2026-11-16 | 플랫폼에 앱 `dongle-api`(브랜치 `chore/hosting-deploy`, 저장공간 5GB) 생성·배포 성공. 도메인 `dongle-api.zanviq.dev`(api 8000), `dongle-mail.zanviq.dev`(mailpit 8025). 배포 서버에서 인증 메일 → 가입 → 일기+사진 → 이미지 조회 → 탈퇴까지 확인(이미지 URL은 https). CORS 허용(`localhost:5173`)·비허용 출처 동작 확인 |
+| 2026-11-17 | PR16(스티커 `scale`, 시각 한국 시간, `is_read`)을 이 브랜치에 병합하고 배포 #43 성공. 배포 서버에서 `+09:00`·`scale` 저장·거절·`is_read=false` 확인. 사용자 결정으로 원격 `dev`를 `main`(`3fe3d8a`)에서 다시 만들고 PR18(→ `dev`)을 열었다. 병합 후 배포 서버는 `dev`를 따라간다 |
 
 ## 결정·변경 사항과 남은 일
 
-- 원격 `dev`가 사라졌다. PR을 어느 브랜치로 보낼지는 사용자에게 확인한다.
-- 플랫폼 앱은 지금 `chore/hosting-deploy` 브랜치를 따라간다. 병합 뒤에는 앱의 브랜치를 `main`(또는 `dev`)으로 바꾼다.
+- PR 대상은 다시 만든 `dev`로 정했다(2026-11-17 사용자 결정).
+- 플랫폼 앱은 지금 `chore/hosting-deploy` 브랜치를 따라간다. 병합 뒤에는 앱의 브랜치를 `dev`로 바꾸고 다시 배포한다(PR18 설명서 「배포·마이그레이션 메모」).
 - `LETTER_DEMO_MODE=True`로 배포했다. 실제 배송 시간을 보려면 플랫폼 환경변수를 `False`로 바꾸고 다시 배포한다.
-- 시간 의존 테스트: `apps/letters/tests.py` `test_first_letter`가 00시대(새벽 우표 시간)에 실패한다. 별도 수정이 필요하다.
-- 남은 일: PR·병합, 앱 브랜치 전환, Mailpit 공개 범위 재검토, 백업 일정.
+- 시간 의존 테스트 `test_first_letter`는 PR16에서 고쳤다.
+- 남은 일: PR18 병합, 앱 브랜치 전환. Mailpit 공개 범위 재검토와 백업 일정은 후속 운영 마무리 작업에서 한다.
