@@ -4,8 +4,8 @@
 - 작성자: 서재민 (AI 작성)
 - 브랜치: `chore/ops-schedule`
 - 기준 커밋: `41f1429` (`feat/demo-seed` 위에 쌓음)
-- 상태: 진행 중
-- 관련 PR: 미정
+- 상태: 리뷰 중
+- 관련 PR: [#20](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/20)
 
 ## 지금 작업 내용
 
@@ -50,6 +50,7 @@
 | 날짜 | 내용 |
 |---|---|
 | 2026-11-17 | 작업 설계 작성. 플랫폼 백업 일정을 매일·7개 보관으로 설정하고 수동 백업 1회 성공(파일 7.8MB, DB 덤프 24KB) |
+| 2026-11-17 | notifier 글감 스케줄, mailpit healthcheck, HSTS·경고 정리, README 구현. `check --deploy`에서 W005도 나와 같은 이유로 껐다. 로컬 compose에서 글감 조건·중복 방지 확인 |
 
 ## 결정·변경 사항과 남은 일
 
