@@ -185,6 +185,43 @@ class SendTests(TestCase):
         )
         self.assertEqual(jpeg.status_code, 400)
 
+    def test_sticker_scale(self) -> None:
+        give_stamps(self.guest, 2)
+        sticker = {"code": "cat-wink", "x": 0.5, "y": 0.5, "rotation": -8}
+        response = send(
+            self.guest_client,
+            diary_id=self.diary.id,
+            stickers=[{**sticker, "scale": 0.3}, sticker],
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        letter = Letter.objects.get()
+        self.assertEqual([s["scale"] for s in letter.stickers], [0.3, 0.18])
+        arrive(letter.id)
+        detail = self.host_client.get(reverse("letter-detail", args=[letter.id])).data
+        self.assertEqual([s["scale"] for s in detail["stickers"]], [0.3, 0.18])
+
+    def test_sticker_scale_legacy_default(self) -> None:
+        give_stamps(self.guest, 2)
+        send(self.guest_client, diary_id=self.diary.id)
+        letter = Letter.objects.get()
+        letter.stickers = [{"code": "cat-wink", "x": 0.1, "y": 0.2, "rotation": 0}]
+        letter.save()
+        arrive(letter.id)
+        detail = self.host_client.get(reverse("letter-detail", args=[letter.id])).data
+        self.assertEqual(detail["stickers"][0]["scale"], 0.18)
+
+    def test_sticker_scale_out_of_range(self) -> None:
+        give_stamps(self.guest, 2)
+        for scale in (0, 0.02, 0.51, 1.5, -0.1, "big", "nan"):
+            response = send(
+                self.guest_client,
+                diary_id=self.diary.id,
+                stickers=[{"code": "cat-wink", "x": 0.5, "y": 0.5, "scale": scale}],
+            )
+            self.assertEqual(response.status_code, 400, scale)
+            self.assertEqual(response.data["code"], "VALIDATION_ERROR", scale)
+        self.assertFalse(Letter.objects.exists())
+
     def test_reply_round_trip(self) -> None:
         first = send(self.guest_client, diary_id=self.diary.id).data
         early = send(self.host_client, reply_to=first["id"])
