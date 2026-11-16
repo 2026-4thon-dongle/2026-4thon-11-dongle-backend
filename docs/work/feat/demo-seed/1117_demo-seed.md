@@ -4,7 +4,7 @@
 - 작성자: 서재민 (AI 작성)
 - 브랜치: `feat/demo-seed`
 - 기준 커밋: `9756231`
-- 상태: 진행 중
+- 상태: 리뷰 중
 - 관련 PR: [#19](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/19)
 
 ## 지금 작업 내용
@@ -63,6 +63,7 @@
 | 날짜 | 내용 |
 |---|---|
 | 2026-11-17 | 작업 설계 작성. `dev`(`9756231`)에서 분기 |
+| 2026-11-17 | `seed_demo` 명령·테스트·compose `demo-seed`·README·테스트 데이터 문서 구현. 편지는 계획한 5가지 상황을 만드느라 7통이 됐다. 로컬 docker에서 `EMAIL_HOST`가 없어 `demo-seed`가 실패해 compose에 메일 설정을 넣었다. sqlite·PostgreSQL 테스트 143개, 로컬 compose 실행·재실행 확인 |
 
 ## 결정·변경 사항과 남은 일
 
