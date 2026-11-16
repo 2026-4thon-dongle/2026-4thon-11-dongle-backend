@@ -109,7 +109,10 @@ class SendTests(TestCase):
         self.assertEqual(missing.status_code, 404)
 
     def test_first_letter(self) -> None:
-        response = send(self.guest_client, diary_id=self.diary.id)
+        # 실행 시각이 새벽(0~5시)이면 새벽 우표가 같이 나가므로 낮 시각으로 고정한다.
+        noon = datetime(2026, 11, 14, 12, 0, tzinfo=ZoneInfo("Asia/Seoul"))
+        with mock.patch("apps.letters.services.timezone.now", return_value=noon):
+            response = send(self.guest_client, diary_id=self.diary.id)
         self.assertEqual(response.status_code, 201, response.data)
         data = response.data
         self.assertTrue(data["is_first"])
