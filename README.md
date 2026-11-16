@@ -62,7 +62,7 @@ brew install mailpit && mailpit
 | `api` | gunicorn. 시작할 때 `migrate`가 지역·우표·글감 기본 데이터까지 넣는다 | `https://dongle-api.zanviq.dev` (8000) |
 | `db` | PostgreSQL 17. 데이터는 `${HOSTING_DATA_DIR}/postgres` | 없음 |
 | `mailpit` | 인증 메일 가상 메일함 | `https://dongle-mail.zanviq.dev` (8025). 비밀번호 없음 |
-| `notifier` | 60초마다 `notify_arrived_letters` | 없음 |
+| `notifier` | 60초마다 `notify_arrived_letters`. 한 시간에 한 번 한국 시간 월요일 9시 이후면 `create_weekly_prompt_notifications`(같은 주에 사용자당 한 번) | 없음 |
 | `init-media` | 업로드 폴더 소유자를 맞추는 한 번짜리 | 없음 |
 | `demo-seed` | `DEMO_SEED=true`일 때만 시연 데이터를 만드는 한 번짜리(아래 「시연 준비」) | 없음 |
 
@@ -72,7 +72,9 @@ brew install mailpit && mailpit
 - 프론트 주소가 바뀌면 `CORS_ALLOWED_ORIGINS`에 추가하고 다시 배포한다.
 - 로컬에서 같은 구성을 확인하려면 위 값을 `.env`에 넣고 `docker compose up --build`를 실행한다. 호스트 포트는 열지 않으므로 `docker compose exec api python -c ...`나 `docker compose exec mailpit ...`로 확인한다.
 - 관리자 계정이 필요하면 `docker compose exec api python manage.py createsuperuser`를 실행한다(플랫폼에서는 서버에서 같은 명령).
-- 주간 글감 알림(`create_weekly_prompt_notifications`)은 이 구성에 넣지 않았다. 필요하면 월요일에 한 번 직접 실행한다.
+- 주간 글감 알림은 `notifier`가 월요일(한국 시간) 9시 이후 한 시간 안에 만든다. 바로 만들려면 서버에서 `python manage.py create_weekly_prompt_notifications`를 실행한다.
+- 백업: 플랫폼 백업 일정이 매일(새벽 4시), 7개 보관이다(2026-11-17 설정). 저장공간(DB 데이터·업로드 이미지)과 DB 덤프가 함께 백업된다.
+- `manage.py check --deploy`(prod 설정)의 W005·W008·W021은 터널 구조 때문에 일부러 끈다. 이유는 `config/settings/prod.py` 주석에 있다.
 
 ## 시연 준비
 
