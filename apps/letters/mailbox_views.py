@@ -9,6 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.diaries.models import Diary
 from apps.moderations.services import blocked_user_ids
 from apps.regions.serializers import RegionWithSidoSerializer
 from apps.users.models import User
@@ -221,6 +222,9 @@ class ConversationDetailView(APIView):
         if view is None:
             raise ApiError("NOT_FOUND", "대화를 찾을 수 없습니다.", status.HTTP_404_NOT_FOUND)
         diary = view.conversation.diary
+        # 대화가 시작된 뒤 일기가 나만 보기로 바뀌거나 숨겨질 수 있으므로 지금 볼 수 있을 때만 준다
+        if diary is not None and not Diary.objects.visible_to(viewer).filter(pk=diary.pk).exists():
+            diary = None
         latest = view.latest
         letters = []
         for letter in view.letters:
