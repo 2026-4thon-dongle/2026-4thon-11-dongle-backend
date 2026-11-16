@@ -185,6 +185,19 @@ class SendTests(TestCase):
         )
         self.assertEqual(jpeg.status_code, 400)
 
+    def test_times_are_korea_time(self) -> None:
+        estimate = self.guest_client.get(reverse("letter-estimate"), {"diary_id": self.diary.id})
+        self.assertRegex(estimate.json()["arrives_at"], r"\+09:00$")
+        sent = send(self.guest_client, diary_id=self.diary.id)
+        body = sent.json()
+        self.assertRegex(body["sent_at"], r"\+09:00$")
+        self.assertRegex(body["arrives_at"], r"\+09:00$")
+        arrive(body["id"])
+        detail = self.host_client.get(reverse("letter-detail", args=[body["id"]])).json()
+        self.assertRegex(detail["sent_at"], r"\+09:00$")
+        self.assertRegex(detail["arrived_at"], r"\+09:00$")
+        self.assertNotIn("Z", body["sent_at"] + detail["arrived_at"])
+
     def test_sticker_scale(self) -> None:
         give_stamps(self.guest, 2)
         sticker = {"code": "cat-wink", "x": 0.5, "y": 0.5, "rotation": -8}
