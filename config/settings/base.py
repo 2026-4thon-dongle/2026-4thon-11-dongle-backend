@@ -89,7 +89,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# 컨테이너에서는 영구 저장소 경로를 MEDIA_ROOT 환경변수로 준다.
+MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / "media")))
+# DEBUG=False에서도 /media/를 Django가 직접 준다(시연 규모용). 트래픽이 늘면 별도 서버로 옮긴다.
+SERVE_MEDIA = env.bool("SERVE_MEDIA", default=False)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -99,6 +102,10 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "config.renderers.LocalTimeJSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
@@ -144,6 +151,8 @@ SPECTACULAR_SETTINGS = {
 }
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+# https 뒤에서 admin 같은 폼을 쓸 때 필요하다. 예: https://dongle-api.zanviq.dev
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="동글 <no-reply@dongle.local>")
 

@@ -53,9 +53,29 @@ brew install mailpit && mailpit
 
 편지 배송 시간을 모두 1분으로 줄이려면(데모) `.env`에 `LETTER_DEMO_MODE=true`를 넣는다.
 
-## 집 서버 시연 설정
+## 홈서버 배포 (TwoMES Hosting)
 
-클라우드 없이 팀원 컴퓨터에서 서버를 열어 시연할 때의 설정이다. 배포용 구성(정적 파일 서빙, gunicorn)이 아직 없으므로 `prod` 설정 대신 로컬 설정(`DEBUG=True`)과 `runserver`로 띄운다. `DEBUG=False`로 띄우면 일기 사진·손글씨 이미지(`/media/`)와 Swagger·admin 화면이 나오지 않는다.
+홈서버 호스팅 플랫폼(TwoMES Hosting)이 저장소의 `compose.yaml`을 빌드해 띄운다. `prod` 설정(`DEBUG=False`)으로 gunicorn이 돌고, 정적 파일은 whitenoise가, 업로드 이미지(`/media/`)는 Django가 준다.
+
+| 서비스 | 하는 일 | 외부 공개 |
+|---|---|---|
+| `api` | gunicorn. 시작할 때 `migrate`가 지역·우표·글감 기본 데이터까지 넣는다 | `https://dongle-api.zanviq.dev` (8000) |
+| `db` | PostgreSQL 17. 데이터는 `${HOSTING_DATA_DIR}/postgres` | 없음 |
+| `mailpit` | 인증 메일 가상 메일함 | `https://dongle-mail.zanviq.dev` (8025). 비밀번호 없음 |
+| `notifier` | 60초마다 `notify_arrived_letters` | 없음 |
+| `init-media` | 업로드 폴더 소유자를 맞추는 한 번짜리 | 없음 |
+
+- 프론트는 API 기본 주소 `https://dongle-api.zanviq.dev/api/`를 쓴다. Swagger는 `/api/docs/`다.
+- 인증 코드는 Mailpit 화면에서 본다. 누구나 볼 수 있으므로 시연·테스트 기간에만 열어 둔다.
+- 플랫폼 환경변수(비밀값은 저장소에 넣지 않는다): `SECRET_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`(`localhost,127.0.0.1`과 API 도메인), `CORS_ALLOWED_ORIGINS`(프론트 주소를 쉼표로), `CSRF_TRUSTED_ORIGINS`(`https://API 도메인`), `LETTER_DEMO_MODE`.
+- 프론트 주소가 바뀌면 `CORS_ALLOWED_ORIGINS`에 추가하고 다시 배포한다.
+- 로컬에서 같은 구성을 확인하려면 위 값을 `.env`에 넣고 `docker compose up --build`를 실행한다. 호스트 포트는 열지 않으므로 `docker compose exec api python -c ...`나 `docker compose exec mailpit ...`로 확인한다.
+- 관리자 계정이 필요하면 `docker compose exec api python manage.py createsuperuser`를 실행한다(플랫폼에서는 서버에서 같은 명령).
+- 주간 글감 알림(`create_weekly_prompt_notifications`)은 이 구성에 넣지 않았다. 필요하면 월요일에 한 번 직접 실행한다.
+
+## 집 서버 시연 설정 (컴퓨터에서 직접)
+
+클라우드·호스팅 없이 팀원 컴퓨터에서 서버를 열어 시연할 때의 설정이다. 이 방식은 `prod` 설정 대신 로컬 설정(`DEBUG=True`)과 `runserver`로 띄운다. `DEBUG=False`로 `runserver`를 띄우면 일기 사진·손글씨 이미지(`/media/`)와 Swagger·admin 화면이 나오지 않는다. 상시 서버가 필요하면 위 「홈서버 배포」를 쓴다.
 
 1. 위 「로컬 실행」과 「인증 메일 확인」대로 PostgreSQL, Mailpit, runserver를 띄운다.
 2. 터널로 https 주소를 받는다. 프론트가 https에 올라가 있으면 http API는 브라우저가 막으므로 공유기 포트포워딩보다 터널을 쓴다.
