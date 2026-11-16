@@ -380,7 +380,7 @@ def letter_detail(letter: Letter, viewer: User, now: datetime, request: Request)
         "sent_at": letter.sent_at,
         "arrived_at": letter.arrives_at,
         "duration_minutes": letter.duration_minutes,
-        "is_read": letter.read_at is not None,
+        "is_read": received and letter.read_at is not None,
         "can_reply": can_reply(letter, viewer, now),
         "can_pass": can_pass(letter, viewer, now),
     }
