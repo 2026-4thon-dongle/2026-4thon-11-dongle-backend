@@ -4,7 +4,7 @@
 - 작성자: 서재민 (AI 작성)
 - 브랜치: `fix/api-error-visibility`
 - 기준 커밋: `a77d5bc`
-- 상태: 진행 중
+- 상태: 리뷰 중
 - 관련 PR: [#21](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/21)
 
 ## 지금 작업 내용
@@ -60,6 +60,7 @@
 | 날짜 | 내용 |
 |---|---|
 | 2026-11-17 | 작업 설계 작성. `dev`(`a77d5bc`)에서 분기 |
+| 2026-11-17 | 4가지 수정과 테스트 9개 구현. sqlite·PostgreSQL 152개 통과. 문서 레포 `api/common.md`·`api/mailbox.md` 수정본 준비(사용자 확인 후 푸시) |
 
 ## 결정·변경 사항과 남은 일
 
