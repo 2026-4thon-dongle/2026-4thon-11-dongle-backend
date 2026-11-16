@@ -24,6 +24,11 @@ services:
     restart: unless-stopped
     environment:
       MP_MAX_MESSAGES: "500"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   # 한 번 돌고 끝난다. 업로드 폴더의 소유자를 앱 사용자(1000)로 맞춘다.
   init-media:
