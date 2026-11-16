@@ -21,6 +21,7 @@ from apps.stamps.services import (
 from apps.stamps.views import reward_payload
 from apps.users.models import User
 from config.exceptions import ApiError
+from config.params import parse_id
 from config.schema import error_response
 
 from .serializers import (
@@ -117,15 +118,17 @@ class EstimateView(APIView):
     )
     def get(self, request: Request) -> Response:
         user = cast(User, request.user)
-        diary_id = request.query_params.get("diary_id")
-        reply_to = request.query_params.get("reply_to")
-        if (diary_id is None) == (reply_to is None) or not (diary_id or reply_to or "").isdigit():
+        raw_diary_id = request.query_params.get("diary_id")
+        raw_reply_to = request.query_params.get("reply_to")
+        diary_id, reply_to = parse_id(raw_diary_id), parse_id(raw_reply_to)
+        if (raw_diary_id is None) == (raw_reply_to is None) or (diary_id or reply_to) is None:
             raise ApiError("VALIDATION_ERROR", "diary_id와 reply_to 중 하나만 보내 주세요.")
         if diary_id is not None:
-            diary = find_diary_for_letter(user, int(diary_id))
+            diary = find_diary_for_letter(user, diary_id)
             route = route_between(user, diary.author, fallback=diary.region)
         else:
-            letter = find_received_letter(user, int(reply_to or 0))
+            assert reply_to is not None
+            letter = find_received_letter(user, reply_to)
             route = route_between(user, letter.sender)
         return Response(
             {

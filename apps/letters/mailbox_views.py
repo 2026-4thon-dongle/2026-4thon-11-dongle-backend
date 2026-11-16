@@ -13,6 +13,7 @@ from apps.moderations.services import blocked_user_ids
 from apps.regions.serializers import RegionWithSidoSerializer
 from apps.users.models import User
 from config.exceptions import ApiError
+from config.params import parse_id
 from config.schema import error_response
 
 from .mailbox import (
@@ -135,9 +136,10 @@ class NewLettersView(MailboxListView):
     def get(self, request: Request) -> Response:
         viewer, now = _viewer(request), timezone.now()
         letters = new_letters(viewer, now)
-        sido = request.query_params.get("sido")
-        if sido is not None:
-            if not sido.isdigit():
+        raw_sido = request.query_params.get("sido")
+        if raw_sido is not None:
+            sido = parse_id(raw_sido)
+            if sido is None:
                 raise ApiError("VALIDATION_ERROR", "sido 값을 확인해 주세요.")
             letters = letters.filter(Q(from_region__parent_id=sido) | Q(from_region_id=sido))
         ordering = request.query_params.get("ordering", "latest")
