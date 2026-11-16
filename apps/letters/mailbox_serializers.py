@@ -135,7 +135,10 @@ class LetterDetailSerializer(serializers.Serializer[Any]):
     stationery = serializers.CharField()
     font = serializers.CharField()
     signature = serializers.CharField(allow_null=True, help_text="서명 이미지 URL")
-    stickers = serializers.ListField(child=serializers.DictField())
+    stickers = serializers.ListField(
+        child=serializers.DictField(),
+        help_text="붙인 스티커 `code`, `x`, `y`, `rotation`, `scale`(편지지 너비 대비 비율)",
+    )
     stamp = StampBriefSerializer()
     sent_at = serializers.DateTimeField()
     arrived_at = serializers.DateTimeField()

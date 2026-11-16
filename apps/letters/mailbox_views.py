@@ -40,6 +40,7 @@ from .mailbox_serializers import (
     SummarySerializer,
 )
 from .models import Letter
+from .serializers import STICKER_DEFAULT_SCALE
 from .services import PENPAL_ROUND_TRIPS, pair_round_trips
 
 
@@ -371,7 +372,10 @@ def letter_detail(letter: Letter, viewer: User, now: datetime, request: Request)
         "stationery": letter.stationery,
         "font": letter.font,
         "signature": request.build_absolute_uri(letter.signature.url) if letter.signature else None,
-        "stickers": letter.stickers,
+        "stickers": [
+            {**sticker, "scale": sticker.get("scale", STICKER_DEFAULT_SCALE)}
+            for sticker in letter.stickers
+        ],
         "stamp": _stamp(letter),
         "sent_at": letter.sent_at,
         "arrived_at": letter.arrives_at,
