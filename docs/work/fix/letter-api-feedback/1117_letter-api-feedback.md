@@ -4,8 +4,8 @@
 - 작성자: 서재민 (AI 작성)
 - 브랜치: `fix/letter-api-feedback`
 - 기준 커밋: `6ae298a`
-- 상태: 진행 중
-- 관련 PR: 미정
+- 상태: 리뷰 중
+- 관련 PR: [PR16](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/16)
 
 ## 지금 작업 내용
 
@@ -25,7 +25,8 @@
 ## 범위
 
 - 포함: 스티커 검증·저장·응답, JSON 렌더러의 시간대 처리, `letter_detail` `is_read`, 테스트, 문서 레포 `api/letters.md`·`api/mailbox.md` 갱신(푸시는 사용자 확인 뒤), 요청 문서 응답
-- 제외: 마이그레이션(스티커는 JSONField라 필요 없음), 편지 쓰기 외 API 변경, `test_first_letter` 시간 의존 수정(별도)
+- 제외: 마이그레이션(스티커는 JSONField라 필요 없음), 편지 쓰기 외 API 변경
+- 추가(진행 중 포함): 새벽 시간대에 실패하던 `test_first_letter`의 시각 고정
 
 ## 참고한 상위 설계
 
@@ -55,6 +56,8 @@
 | 날짜 | 내용 |
 |---|---|
 | 2026-11-17 | 작업 설계 작성. 원격 `dev`가 없어 배포 브랜치 `chore/hosting-deploy`(`6ae298a`)에서 분기. 배포 서버가 그 브랜치를 따라가므로 이 브랜치를 거기에 병합하면 서버에 바로 반영된다(가정) |
+| 2026-11-17 | Draft PR #16 생성(대상 `chore/hosting-deploy`). scale 검증·저장·응답, JSON 렌더러 한국 시간, `is_read` 수정과 테스트 구현. 로컬(sqlite) 137개 테스트 통과, 시각 테스트가 렌더러 없이는 실패함을 확인 |
+| 2026-11-17 | 새벽에 실패하던 `test_first_letter`를 낮 시각 고정으로 수정 |
 
 ## 결정·변경 사항과 남은 일
 
