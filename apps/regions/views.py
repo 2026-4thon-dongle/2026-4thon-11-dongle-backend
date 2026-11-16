@@ -22,6 +22,8 @@ class RegionListView(generics.ListAPIView[Region]):
     """가입 전에도 지역을 고를 수 있어야 하므로 공개한다."""
 
     permission_classes = [AllowAny]
+    # 공개 API는 Authorization 헤더를 보지 않는다. 만료된 토큰이 붙어도 401을 내지 않는다
+    authentication_classes = []
     serializer_class = RegionTreeSerializer
     pagination_class = None
 
