@@ -24,6 +24,8 @@ services:
     restart: unless-stopped
     environment:
       MP_MAX_MESSAGES: "500"
+      # 웹 화면·API 기본 인증 "사용자:비밀번호". 배포 서버 환경변수로 넣고 저장소에는 넣지 않는다. 비우면 비밀번호 없이 열린다(로컬).
+      MP_UI_AUTH: ${MAILPIT_UI_AUTH:-}
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 15s
