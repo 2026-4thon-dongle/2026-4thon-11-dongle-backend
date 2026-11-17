@@ -17,6 +17,7 @@
 - 2026-11-05: 저장소 초기 세팅 완료(Django 기본 구조, 협업 문서 구조).
 - 2026-11-09: `users`, `regions`, `stamps`(지급만), `diaries`, `moderations`, `notifications` 앱 추가.
 - 2026-11-14: 우표 API(PR8), 편지 보내기(PR9), 우체통(PR10), 피드(`feeds` 앱, PR11), 편지 알림·기존 기능 연결(PR12), 임시저장·배송 경로(PR13) 추가. 문서 레포 `api/`의 API를 모두 구현했다. 편지 도착 알림은 `notify_arrived_letters` 명령을 1분마다 실행한다.
+- 2026-11-16: 홈서버 호스팅 플랫폼(TwoMES Hosting)에 배포했다. `compose.yaml`(api·db·mailpit·notifier)과 Dockerfile, prod 설정 보완(whitenoise, `/media/` 서빙). API `https://dongle-api.zanviq.dev/api/`, 인증 코드 `https://dongle-mail.zanviq.dev`. 방법은 README 「홈서버 배포」.
 - 개발 기간 2주. MVP: 학교 이메일 인증(`ac.kr`), 지역 설정(시·도), 고향 일기(텍스트 + 사진 1장), 교차 피드, 편지 답장(본문 + 손글씨 한 줄 이미지 + 편지지), 느린 편지(1h/3h/6h/12h, 데모 모드 1분), 우체통.
 - 여유 시: 지역 우표, 펜팔 친구, 신고·차단, 금칙어 필터, 하루 한 번 이메일 알림.
 - 피드는 `Diary.objects.visible_to(user)`로 조회한다. 편지는 `apps.moderations.services`의 `blocked_user_ids`, `detect_contact_patterns`, `apps.notifications.services.notify`, `apps.stamps.services.grant_stamp`를 쓴다.

@@ -1,7 +1,10 @@
+import re
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.letters.mailbox_views import PenpalListView
@@ -18,10 +21,26 @@ urlpatterns = [
     path("api/mailbox/", include("apps.letters.mailbox_urls")),
     path("api/penpals/", PenpalListView.as_view(), name="penpal-list"),
     path("api/feed/", include("apps.feeds.urls")),
+    path("api/game/", include("apps.games.urls")),
     path("api/regions/", include("apps.regions.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 ]
 
-# DEBUG일 때만 동작한다. 배포 환경의 사진 서빙은 별도로 정한다.
+# DEBUG일 때만 동작한다.
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# DEBUG=False인 배포 환경에서는 SERVE_MEDIA=true일 때 Django가 업로드 이미지를 직접 준다.
+if settings.SERVE_MEDIA and not settings.DEBUG:
+    urlpatterns += [
+        re_path(
+            rf"^{re.escape(settings.MEDIA_URL.lstrip('/'))}(?P<path>.*)$",
+            serve,
+            {"document_root": settings.MEDIA_ROOT},
+        )
+    ]
+
+# /api/ 아래의 400·404·500을 HTML 대신 {"code", "message"} JSON으로 준다 (DEBUG=False일 때).
+handler400 = "config.exceptions.bad_request"
+handler404 = "config.exceptions.page_not_found"
+handler500 = "config.exceptions.server_error"

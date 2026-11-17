@@ -9,10 +9,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.diaries.models import Diary
 from apps.moderations.services import blocked_user_ids
 from apps.regions.serializers import RegionWithSidoSerializer
 from apps.users.models import User
 from config.exceptions import ApiError
+from config.params import parse_id
 from config.schema import error_response
 
 from .mailbox import (
@@ -40,6 +42,7 @@ from .mailbox_serializers import (
     SummarySerializer,
 )
 from .models import Letter
+from .serializers import STICKER_DEFAULT_SCALE
 from .services import PENPAL_ROUND_TRIPS, pair_round_trips
 
 
@@ -134,9 +137,10 @@ class NewLettersView(MailboxListView):
     def get(self, request: Request) -> Response:
         viewer, now = _viewer(request), timezone.now()
         letters = new_letters(viewer, now)
-        sido = request.query_params.get("sido")
-        if sido is not None:
-            if not sido.isdigit():
+        raw_sido = request.query_params.get("sido")
+        if raw_sido is not None:
+            sido = parse_id(raw_sido)
+            if sido is None:
                 raise ApiError("VALIDATION_ERROR", "sido 값을 확인해 주세요.")
             letters = letters.filter(Q(from_region__parent_id=sido) | Q(from_region_id=sido))
         ordering = request.query_params.get("ordering", "latest")
@@ -218,6 +222,9 @@ class ConversationDetailView(APIView):
         if view is None:
             raise ApiError("NOT_FOUND", "대화를 찾을 수 없습니다.", status.HTTP_404_NOT_FOUND)
         diary = view.conversation.diary
+        # 대화가 시작된 뒤 일기가 나만 보기로 바뀌거나 숨겨질 수 있으므로 지금 볼 수 있을 때만 준다
+        if diary is not None and not Diary.objects.visible_to(viewer).filter(pk=diary.pk).exists():
+            diary = None
         latest = view.latest
         letters = []
         for letter in view.letters:
@@ -371,12 +378,15 @@ def letter_detail(letter: Letter, viewer: User, now: datetime, request: Request)
         "stationery": letter.stationery,
         "font": letter.font,
         "signature": request.build_absolute_uri(letter.signature.url) if letter.signature else None,
-        "stickers": letter.stickers,
+        "stickers": [
+            {**sticker, "scale": sticker.get("scale", STICKER_DEFAULT_SCALE)}
+            for sticker in letter.stickers
+        ],
         "stamp": _stamp(letter),
         "sent_at": letter.sent_at,
         "arrived_at": letter.arrives_at,
         "duration_minutes": letter.duration_minutes,
-        "is_read": letter.read_at is not None,
+        "is_read": received and letter.read_at is not None,
         "can_reply": can_reply(letter, viewer, now),
         "can_pass": can_pass(letter, viewer, now),
     }

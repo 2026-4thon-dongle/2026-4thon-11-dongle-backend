@@ -1,0 +1,123 @@
+# 홈서버 호스팅 플랫폼(TwoMES Hosting) 배포용. 로컬에서 확인하려면 .env에 아래 값을 넣고
+# `docker compose up --build`를 실행한다 (README 「홈서버 배포」).
+# 호스트 포트(ports:)는 열지 않는다. 외부 공개는 플랫폼의 도메인 설정이 한다 (api 8000, mailpit 8025).
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dongle
+      POSTGRES_USER: dongle
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 필요}
+    volumes:
+      - ${HOSTING_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dongle -d dongle"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # 가상 메일함. 인증 메일이 여기 쌓이고 웹 화면(8025)에서 코드를 본다. SMTP(1025)는 api에서만 쓴다.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: "500"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # 한 번 돌고 끝난다. 업로드 폴더의 소유자를 앱 사용자(1000)로 맞춘다.
+  init-media:
+    image: busybox:stable
+    restart: "no"
+    command: ["sh", "-c", "mkdir -p /media && chown -R 1000:1000 /media"]
+    volumes:
+      - ${HOSTING_DATA_DIR:-./data}/media:/media
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      init-media:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    env_file:
+      - path: .env # 플랫폼이 배포 때 써 준다. 로컬에서는 직접 만든다
+        required: false
+    environment:
+      DATABASE_URL: postgres://dongle:${POSTGRES_PASSWORD}@db:5432/dongle
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+      MEDIA_ROOT: /app/media
+      SERVE_MEDIA: "true"
+    volumes:
+      - ${HOSTING_DATA_DIR:-./data}/media:/app/media
+    command:
+      - sh
+      - -c
+      - python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile -
+
+  # 편지 도착 알림을 1분마다 만든다. 알림을 조회할 때도 만들어지므로 늦어져도 알림이 빠지지는 않는다.
+  # 한 시간에 한 번은 한국 시간 월요일 9시 이후인지 보고 주간 글감 알림을 만든다.
+  # 글감 알림 명령은 6일 안에 받은 사람에게 다시 만들지 않으므로 월요일에 여러 번 돌아도 한 번만 간다.
+  notifier:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://dongle:${POSTGRES_PASSWORD}@db:5432/dongle
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+    healthcheck:
+      disable: true
+    command:
+      - sh
+      - -c
+      - >-
+        i=0;
+        while true; do
+        python manage.py notify_arrived_letters;
+        if [ $$((i % 60)) -eq 0 ] && python -c "import datetime as d, zoneinfo as z; n = d.datetime.now(z.ZoneInfo('Asia/Seoul')); raise SystemExit(0 if n.isoweekday() == 1 and n.hour >= 9 else 1)";
+        then python manage.py create_weekly_prompt_notifications;
+        fi;
+        i=$$((i + 1));
+        sleep 60;
+        done
+
+  # 시연 데이터(seed_demo)를 한 번 만들고 끝난다. 환경변수 DEMO_SEED=true일 때만 만든다.
+  # 다시 만들려면 다시 배포하거나 이 컨테이너를 다시 시작한다 (README 「시연 준비」).
+  demo-seed:
+    build: .
+    restart: "no"
+    depends_on:
+      api:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://dongle:${POSTGRES_PASSWORD}@db:5432/dongle
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+    healthcheck:
+      disable: true
+    command:
+      - sh
+      - -c
+      - >-
+        if [ "$${DEMO_SEED:-false}" = "true" ];
+        then python manage.py seed_demo --arrive-in "$${DEMO_ARRIVE_IN:-3}";
+        else echo "DEMO_SEED가 true가 아니라 시연 데이터를 만들지 않습니다";
+        fi
