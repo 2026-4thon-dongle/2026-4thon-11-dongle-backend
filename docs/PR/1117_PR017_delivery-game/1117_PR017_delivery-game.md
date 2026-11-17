@@ -30,7 +30,7 @@
 - 새 우표·보상·알림 종류를 만들지 않는다. 기존 데이터에서 바뀌는 것은 `Letter.arrives_at`과 `UserStamp`뿐이다. 도착 알림은 기존 `notify_arrived_letters`가 줄어든 `arrives_at`을 그대로 따른다.
 - 꾸미기 우표의 설명 문구(「시즌 이벤트에서 받았어요」)는 기존 데이터라 바꾸지 않고, 게임 조건 문구는 게임 API의 `goals[].condition`으로 준다.
 - 결과 검증은 서버 시각(시작 25초 뒤 ~ 3분)과 코스의 최대값으로만 한다. 입력 기록을 재생하는 검증은 하지 않는다(해커톤 범위, 가정).
-- 가정: 처음에는 원격 `dev`가 없어 `chore/hosting-deploy`에서 분기했다. PR18로 `dev`가 다시 생기면서 GitHub가 대상을 `dev`로 바꿨고, 최신 `dev`를 이 브랜치에 병합(merge commit)했다.
+- 가정: 처음에는 원격 `dev`가 없어 `chore/hosting-deploy`에서 분기했다. PR18로 `dev`가 다시 생기면서 GitHub가 대상을 `dev`로 바꿨고, 최신 `dev`를 이 브랜치에 병합(merge commit)했다. 병합 전에 PR19~21이 들어간 `dev`(`94b18ff`)를 한 번 더 병합했다(충돌 없음). 게임 에러는 PR21의 공통 에러 형식(`ApiError` → `{"code", "message"}`)을 그대로 쓴다.
 
 ## 디자인 영향
 
@@ -38,9 +38,10 @@
 
 ## 테스트
 
-- 로컬(sqlite): `ruff format --check`, `ruff check`, `mypy .`, `manage.py check`, `makemigrations --check`, `manage.py test` 155개 통과(게임 18개 포함), `spectacular` 경고 없음.
+- 로컬(sqlite): `ruff format --check`, `ruff check`, `mypy .`, `manage.py check`, `makemigrations --check`, `manage.py test` 통과, `spectacular` 경고 없음. 최신 `dev`(PR19~21, `94b18ff`)를 병합한 뒤 170개 통과(게임 18개 포함).
+- 로컬 PostgreSQL 17(docker 임시 컨테이너): `manage.py test` 170개 통과. `select_for_update`가 실제로 도는 환경에서 게임 테스트 18개 통과.
 - 로컬 연동: 이 브랜치를 `runserver`로 띄우고 frontend PR #96 화면에서 실제로 플레이했다. 시작 → 30초 → 결과(별 0개, 단축 없음)와 성공(별 1개 → 도착 10분 단축, 「별사탕」 지급)을 확인했다.
-- PostgreSQL로는 돌리지 않았다(새 쿼리는 집계·`select_for_update`뿐이고 sqlite에서는 잠금이 무시된다. 배포 서버는 PostgreSQL이므로 배포 뒤 한 판 확인이 필요하다).
+- 배포 서버 확인은 병합 후 한다.
 - 테스트 데이터·계정 변경 없음(로컬 확인용 계정은 임시 sqlite에만 만들었다).
 
 ## 리뷰어가 볼 곳
@@ -54,5 +55,5 @@
 
 ## 관련 문서
 
-- 문서 레포 `api/game.md`, `spec/game.md`, `changes/1117_be_delivery-game.md` (로컬 커밋, 푸시 전)
+- 문서 레포 `api/game.md`, `spec/game.md`, `changes/1117_be_delivery-game.md`
 - frontend PR #96
