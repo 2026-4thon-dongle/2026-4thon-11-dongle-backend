@@ -5,7 +5,7 @@
 - 브랜치: `fix/qa-r16-errors`
 - 기준 커밋: `213bf20`
 - 상태: 진행 중
-- 관련 PR: 미정
+- 관련 PR: [PR35](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/35)
 
 ## 지금 작업 내용
 
