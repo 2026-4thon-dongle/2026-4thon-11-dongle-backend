@@ -11,7 +11,8 @@ from apps.users.models import User
 from .models import BODY_MAX_LENGTH, Diary, DiaryPrompt
 
 IMAGE_MAX_BYTES = 5 * 1024 * 1024
-IMAGE_FORMATS = {"JPEG", "PNG", "WEBP"}
+# 휴대폰 카메라 JPEG 중 여러 장 그림 정보(MPF)가 든 파일은 Pillow가 MPO로 읽는다. 파일은 JPEG다.
+IMAGE_FORMATS = {"JPEG", "MPO", "PNG", "WEBP"}
 
 
 class AuthorSerializer(serializers.ModelSerializer[User]):
