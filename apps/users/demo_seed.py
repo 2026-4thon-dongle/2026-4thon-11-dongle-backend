@@ -308,7 +308,8 @@ def _create(users: dict[str, User], arrive_in: int, result: SeedResult) -> None:
     )
     _deliver(read, now - timedelta(days=1, hours=2), read=True)
 
-    # 시연1 ↔ 시연5: 왕복 3번이 끝난 펜팔 친구 (5-14·5-15). 마지막은 시연5의 편지라 시연1이 답장할 차례다
+    # 시연1 ↔ 시연5: 왕복 3번이 끝난 펜팔 친구 (5-14·5-15).
+    # 마지막은 시연5의 편지라 시연1이 답장할 차례다
     penpal_bodies = (
         (
             d1,
