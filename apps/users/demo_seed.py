@@ -14,10 +14,12 @@ from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from apps.diaries.models import Diary
+from apps.games.models import GameRun
 from apps.letters.delivery import DURATION_MINUTES
 from apps.letters.models import Conversation, Draft, Letter
 from apps.letters.notifications import notify_departed
 from apps.letters.services import send_letter
+from apps.moderations.models import Block, Report
 from apps.notifications.models import Notification
 from apps.regions.models import Region
 from apps.stamps.models import RewardSeen, Stamp, UserStamp
@@ -130,7 +132,10 @@ def _mixed_conversations(ids: list[int]) -> QuerySet[Conversation]:
 
 
 def _clear(ids: list[int], result: SeedResult) -> None:
-    """시연 계정끼리의 데이터만 지운다."""
+    """시연 계정끼리의 데이터와 시연 계정이 남긴 기록(게임, 차단, 신고)을 지운다.
+
+    다른 사용자가 시연 계정을 차단·신고한 기록은 그 사용자의 데이터라 남긴다.
+    """
     mixed = _mixed_conversations(ids)
     result.kept_conversations = mixed.count()
     # 다른 사용자의 대화나 임시저장이 달린 일기는 지우면 그 사용자의 데이터가 함께 바뀌므로 남긴다
@@ -144,6 +149,9 @@ def _clear(ids: list[int], result: SeedResult) -> None:
     Notification.objects.filter(user_id__in=ids).delete()
     UserStamp.objects.filter(user_id__in=ids).delete()
     RewardSeen.objects.filter(user_id__in=ids).delete()
+    GameRun.objects.filter(user_id__in=ids).delete()
+    Block.objects.filter(blocker_id__in=ids).delete()
+    Report.objects.filter(reporter_id__in=ids).delete()
 
 
 def _check_nicknames() -> None:
@@ -166,7 +174,13 @@ def _ensure_user(spec: DemoUser) -> User:
         user = User.objects.create_user(spec.email, spec.nickname)
     user.nickname = spec.nickname
     user.residence = _region(*spec.residence)
+    # 설정 화면(7-1-1, 7-11)도 처음 상태로 되돌린다. 값은 User 모델의 기본값과 같다.
     user.letter_paused = False
+    user.push_enabled = True
+    user.daily_digest_enabled = False
+    user.weekly_prompt_enabled = True
+    user.letter_arrival_push_enabled = True
+    user.letter_departure_push_enabled = True
     user.save()
     user.hometowns.set([_region(*spec.hometown)])
     TermsAgreement.objects.get_or_create(user=user, defaults={"version": settings.TERMS_VERSION})
