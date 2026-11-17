@@ -177,6 +177,11 @@ class SignupTests(AuthTestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data["code"], "NICKNAME_TAKEN")
 
+    def test_blank_nickname_is_invalid_nickname(self) -> None:
+        response = self.signup(self.signup_payload(self.token(), nickname="   "))
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "INVALID_NICKNAME")
+
     def test_nickname_check(self) -> None:
         make_user()
         url = reverse("auth-nickname-check")
@@ -258,6 +263,11 @@ class MeTests(TestCase):
         self.assertEqual(self.client.patch(url, {"nickname": "가"}).status_code, 400)
         self.assertEqual(self.client.patch(url, {"nickname": "민호"}).status_code, 200)
         self.assertEqual(self.client.patch(url, {"nickname": "새이름"}).data["nickname"], "새이름")
+
+    def test_blank_nickname_change_is_invalid_nickname(self) -> None:
+        response = self.client.patch(reverse("me"), {"nickname": "   "}, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "INVALID_NICKNAME")
 
     def test_region_update_keeps_old_diary_region(self) -> None:
         diary = Diary.objects.create(author=self.user, region=regions()[1], body="x")
