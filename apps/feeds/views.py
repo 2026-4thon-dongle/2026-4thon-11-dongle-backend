@@ -16,6 +16,7 @@ from apps.regions.models import Region
 from apps.regions.serializers import RegionWithSidoSerializer
 from apps.users.models import User
 from config.exceptions import ApiError
+from config.params import parse_id
 from config.schema import error_response
 
 from .models import FeedSeen
@@ -31,7 +32,8 @@ def _region_param(request: Request, name: str) -> Region | None:
     value = request.query_params.get(name)
     if value is None:
         return None
-    region = Region.objects.filter(id=value).first() if value.isdigit() else None
+    region_id = parse_id(value)
+    region = Region.objects.filter(id=region_id).first() if region_id is not None else None
     if region is None:
         raise ApiError("VALIDATION_ERROR", f"{name} 값을 확인해 주세요.")
     return region

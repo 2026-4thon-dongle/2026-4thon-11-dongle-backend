@@ -62,8 +62,9 @@ brew install mailpit && mailpit
 | `api` | gunicorn. 시작할 때 `migrate`가 지역·우표·글감 기본 데이터까지 넣는다 | `https://dongle-api.zanviq.dev` (8000) |
 | `db` | PostgreSQL 17. 데이터는 `${HOSTING_DATA_DIR}/postgres` | 없음 |
 | `mailpit` | 인증 메일 가상 메일함 | `https://dongle-mail.zanviq.dev` (8025). 비밀번호 없음 |
-| `notifier` | 60초마다 `notify_arrived_letters` | 없음 |
+| `notifier` | 60초마다 `notify_arrived_letters`. 한 시간에 한 번 한국 시간 월요일 9시 이후면 `create_weekly_prompt_notifications`(같은 주에 사용자당 한 번) | 없음 |
 | `init-media` | 업로드 폴더 소유자를 맞추는 한 번짜리 | 없음 |
+| `demo-seed` | `DEMO_SEED=true`일 때만 시연 데이터를 만드는 한 번짜리(아래 「시연 준비」) | 없음 |
 
 - 프론트는 API 기본 주소 `https://dongle-api.zanviq.dev/api/`를 쓴다. Swagger는 `/api/docs/`다.
 - 인증 코드는 Mailpit 화면에서 본다. 누구나 볼 수 있으므로 시연·테스트 기간에만 열어 둔다.
@@ -71,7 +72,47 @@ brew install mailpit && mailpit
 - 프론트 주소가 바뀌면 `CORS_ALLOWED_ORIGINS`에 추가하고 다시 배포한다.
 - 로컬에서 같은 구성을 확인하려면 위 값을 `.env`에 넣고 `docker compose up --build`를 실행한다. 호스트 포트는 열지 않으므로 `docker compose exec api python -c ...`나 `docker compose exec mailpit ...`로 확인한다.
 - 관리자 계정이 필요하면 `docker compose exec api python manage.py createsuperuser`를 실행한다(플랫폼에서는 서버에서 같은 명령).
-- 주간 글감 알림(`create_weekly_prompt_notifications`)은 이 구성에 넣지 않았다. 필요하면 월요일에 한 번 직접 실행한다.
+- 주간 글감 알림은 `notifier`가 월요일(한국 시간) 9시 이후 한 시간 안에 만든다. 바로 만들려면 서버에서 `python manage.py create_weekly_prompt_notifications`를 실행한다.
+- 백업: 플랫폼 백업 일정이 매일(새벽 4시), 7개 보관이다(2026-11-17 설정). 저장공간(DB 데이터·업로드 이미지)과 DB 덤프가 함께 백업된다.
+- `manage.py check --deploy`(prod 설정)의 W005·W008·W021은 터널 구조 때문에 일부러 끈다. 이유는 `config/settings/prod.py` 주석에 있다.
+
+## 시연 준비
+
+### 시연 데이터 만들기 (`seed_demo`)
+
+`python manage.py seed_demo`는 시연 계정 5개(`demo1`~`demo5@dongle-demo.ac.kr`)와 일기·편지·우표를 만든다. 계정과 데이터 목록은 [docs/report/1117_9756231_test-data.md](docs/report/1117_9756231_test-data.md)에 있다.
+
+- 몇 번 실행해도 결과가 같다. 시연 계정은 그대로 두고(로그인이 유지된다) 시연 계정끼리의 데이터만 지우고 다시 만든다. 배송 중인 편지의 도착 시각도 실행한 때를 기준으로 다시 잡힌다.
+- 시연 계정이 아닌 사용자의 데이터는 바꾸지 않는다. 다른 사용자가 시연 계정 일기에 편지를 보냈으면 그 대화와 일기는 남기고 「남겼습니다」라고 알린다.
+- 시연 닉네임을 다른 사용자가 쓰고 있으면 아무것도 바꾸지 않고 오류로 끝난다.
+- `--arrive-in 5`: 시연 중 도착할 편지(시연4 → 시연1)를 5분 뒤 도착하게 한다(기본 3분).
+- `--remove`: 시연 데이터와 시연 계정을 지운다. 다른 사용자와 대화가 있는 시연 계정은 남긴다.
+- 로그인은 일반 사용자와 같다. 메일 `demo1@dongle-demo.ac.kr`로 로그인 코드를 요청하고 Mailpit에서 코드를 본다.
+
+배포 서버에는 셸이 없으므로 compose의 `demo-seed` 서비스가 실행한다.
+
+1. 플랫폼 환경변수에 `DEMO_SEED=true`(필요하면 `DEMO_ARRIVE_IN=5`)를 넣고 다시 배포한다. 배포할 때마다 시연 데이터가 다시 만들어진다.
+2. 배포 없이 다시 만들려면 `demo-seed` 컨테이너(`dongle-api-demo-seed-1`)를 다시 시작한다.
+3. 시연이 끝나면 `DEMO_SEED`를 지우거나 `false`로 바꾸고 다시 배포한다. 시연 데이터는 남는다. 지우려면 서버에서 `seed_demo --remove`를 실행한다.
+
+### 데모 모드 (편지 1분 도착)
+
+- `LETTER_DEMO_MODE=True`면 새로 보내는 편지가 거리와 관계없이 1분 뒤 도착한다. 이미 보낸 편지의 도착 시각은 바뀌지 않는다.
+- 켜기·끄기: 플랫폼 환경변수 `LETTER_DEMO_MODE`를 `True`/`False`로 바꾸고 다시 배포한다(환경변수는 다음 배포부터 반영된다). 로컬은 `.env`를 고치고 서버를 다시 띄운다.
+- `seed_demo`가 만드는 배송 중 편지는 데모 모드와 관계없이 실제 구간 시간(1~12시간)으로 둬서 시연 중에 도착하지 않는다. 시연 중 도착할 편지 1통만 `--arrive-in`분 뒤 도착한다.
+
+### 시연 확인 순서
+
+시연 직전에 `seed_demo`를 실행(배포 서버는 `demo-seed` 재시작)한 뒤 다음 순서로 확인한다.
+
+1. 시연1(`demo1`)로 로그인: 메일 코드 요청 → Mailpit에서 코드 확인 → 로그인
+2. 피드(`GET /api/feed/hometown/`): 본가 부산 사람들의 일기(시연2, 해운대구)가 먼저 보인다
+3. 우체통 새 편지(`GET /api/mailbox/new/`): 시연2의 편지 1통, 열면(`POST /api/letters/{id}/open/`) 읽음 처리
+4. 대화(`GET /api/mailbox/conversations/`): 시연3과 왕복한 대화, 시연3의 다음 편지는 배송 중
+5. 배송 중(`GET /api/mailbox/in-transit/`)과 경로(`GET /api/letters/{id}/route/`): 시연1 → 시연4(밤하늘 편지지, 스티커)
+6. 우표첩(`GET /api/stamps/`): 우표 5개 이상, 스티커·「밤하늘」 보상 열림
+7. 일기 쓰기 → 다른 시연 계정으로 그 일기에 편지 보내기: 데모 모드면 1분 뒤 도착
+8. `--arrive-in`분 뒤: 시연4의 편지가 도착하고 알림(`GET /api/notifications/`)이 생긴다
 
 ## 집 서버 시연 설정 (컴퓨터에서 직접)
 

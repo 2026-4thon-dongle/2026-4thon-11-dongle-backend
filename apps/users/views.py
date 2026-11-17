@@ -50,6 +50,8 @@ def _token_payload(user: User) -> dict[str, Any]:
 @extend_schema(tags=["인증"])
 class EmailSendView(APIView):
     permission_classes = [AllowAny]
+    # 공개 API는 Authorization 헤더를 보지 않는다. 만료된 토큰이 붙어도 401을 내지 않는다
+    authentication_classes = []
 
     @extend_schema(
         summary="인증 코드 메일 발송",
@@ -101,6 +103,8 @@ class EmailSendView(APIView):
 @extend_schema(tags=["인증"])
 class EmailVerifyView(APIView):
     permission_classes = [AllowAny]
+    # 공개 API는 Authorization 헤더를 보지 않는다. 만료된 토큰이 붙어도 401을 내지 않는다
+    authentication_classes = []
 
     @extend_schema(
         summary="인증 코드 확인 (회원가입 토큰 발급 / 로그인)",
@@ -142,6 +146,8 @@ class EmailVerifyView(APIView):
 @extend_schema(tags=["인증"])
 class NicknameCheckView(APIView):
     permission_classes = [AllowAny]
+    # 공개 API는 Authorization 헤더를 보지 않는다. 만료된 토큰이 붙어도 401을 내지 않는다
+    authentication_classes = []
 
     @extend_schema(
         summary="닉네임 사용 가능 여부 확인",
@@ -165,6 +171,8 @@ class NicknameCheckView(APIView):
 @extend_schema(tags=["인증"])
 class SignupView(APIView):
     permission_classes = [AllowAny]
+    # 공개 API는 Authorization 헤더를 보지 않는다. 만료된 토큰이 붙어도 401을 내지 않는다
+    authentication_classes = []
 
     @extend_schema(
         summary="회원가입",

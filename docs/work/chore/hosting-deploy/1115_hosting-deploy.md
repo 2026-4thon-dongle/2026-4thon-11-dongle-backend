@@ -4,7 +4,7 @@
 - 작성자: 서재민 (AI 작성)
 - 브랜치: `chore/hosting-deploy`
 - 기준 커밋: `3fe3d8a`
-- 상태: 진행 중
+- 상태: 완료
 - 관련 PR: [#18](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/18)
 
 ## 지금 작업 내용

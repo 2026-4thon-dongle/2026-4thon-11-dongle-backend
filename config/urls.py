@@ -39,3 +39,8 @@ if settings.SERVE_MEDIA and not settings.DEBUG:
             {"document_root": settings.MEDIA_ROOT},
         )
     ]
+
+# /api/ 아래의 400·404·500을 HTML 대신 {"code", "message"} JSON으로 준다 (DEBUG=False일 때).
+handler400 = "config.exceptions.bad_request"
+handler404 = "config.exceptions.page_not_found"
+handler500 = "config.exceptions.server_error"

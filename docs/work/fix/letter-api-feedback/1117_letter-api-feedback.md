@@ -4,7 +4,7 @@
 - 작성자: 서재민 (AI 작성)
 - 브랜치: `fix/letter-api-feedback`
 - 기준 커밋: `6ae298a`
-- 상태: 리뷰 중
+- 상태: 완료
 - 관련 PR: [PR16](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/16)
 
 ## 지금 작업 내용
