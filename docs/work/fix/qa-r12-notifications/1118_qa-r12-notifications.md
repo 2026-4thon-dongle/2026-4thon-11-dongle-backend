@@ -4,7 +4,7 @@
 - 작성자: 서재민 (AI 작성)
 - 브랜치: `fix/qa-r12-notifications`
 - 기준 커밋: `213bf20`
-- 상태: 진행 중
+- 상태: 리뷰 중
 - 관련 PR: [PR34](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/34)
 
 ## 지금 작업 내용
@@ -43,6 +43,7 @@
 | 날짜 | 내용 |
 |---|---|
 | 2026-11-18 | 작업 설계 작성. `dev`(`213bf20`)에서 분기. 로컬 서버(8100, PostgreSQL)에서 재현: `prompt` 알림 `target_id` null |
+| 2026-11-18 | 글감 알림 target_id와 테스트 1개. sqlite 173개 통과 |
 
 ## 결정·변경 사항과 남은 일
 
