@@ -66,6 +66,10 @@ class SeedDemoTests(TestCase):
         self.assertEqual([item["kind"] for item in archive], ["passed_letter"])
         drafts = hero.get(reverse("letter-draft-list")).json()["results"]
         self.assertEqual(len(drafts), 1)
+        # 시연1은 실행 시각과 관계없이 우표 9개라 1개만 더 받으면 「우표 수집가」 보상이 열린다
+        stamps = hero.get(reverse("stamp-book")).json()
+        self.assertEqual(stamps["owned_count"], 9)
+        self.assertEqual(stamps["next_reward"]["remaining"], 1)
 
     def test_reset_clears_demo_activity(self) -> None:
         run()
