@@ -287,8 +287,10 @@ def _create(users: dict[str, User], arrive_in: int, result: SeedResult) -> None:
     )
     _deliver(unread, now - timedelta(hours=14), read=False)
 
-    # 시연1 꾸미기 우표: 우표가 5개를 넘어 스티커·「밤하늘」 보상이 열린다
-    grant_stamps(d1, DECORATION_STAMPS)
+    # 시연1 꾸미기 우표: 우표가 5개를 넘어 스티커·「밤하늘」 보상이 열린다.
+    # 「새벽 편지」는 실행 시각(0~5시)에 따라 생기므로 늘 준다. 시연1은 우표 9개가 되어
+    # 시연 중 배달 게임 한 판 성공(별사탕)으로 10개째 「우표 수집가」 보상이 열린다.
+    grant_stamps(d1, [*DECORATION_STAMPS, "dawn-letter"])
 
     # 시연1 → 시연4: 배송 중 (배송 경로 화면용). 열린 편지지·스티커를 쓴다
     outgoing = _send(
