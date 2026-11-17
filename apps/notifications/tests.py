@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from apps.diaries.models import DiaryPrompt
 from apps.users.models import User
 
 from .models import Notification, PushToken
@@ -61,3 +62,11 @@ class NotificationTests(TestCase):
         call_command("create_weekly_prompt_notifications", verbosity=0, stdout=StringIO())
         self.assertEqual(Notification.objects.filter(user=self.user).count(), 1)
         self.assertFalse(Notification.objects.filter(user=self.other).exists())
+
+    def test_weekly_prompt_target_is_prompt_id(self) -> None:
+        call_command("create_weekly_prompt_notifications", verbosity=0, stdout=StringIO())
+        notification = Notification.objects.get(user=self.user, type=Notification.Type.PROMPT)
+        prompt = DiaryPrompt.objects.get(id=notification.target_id, is_active=True)
+        self.assertEqual(notification.body, prompt.text)
+        listed = self.client.get(reverse("notification-list")).data["results"][0]
+        self.assertEqual(listed["target_id"], prompt.id)
