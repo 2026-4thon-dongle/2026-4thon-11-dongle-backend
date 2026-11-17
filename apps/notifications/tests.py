@@ -66,7 +66,8 @@ class NotificationTests(TestCase):
     def test_weekly_prompt_target_is_prompt_id(self) -> None:
         call_command("create_weekly_prompt_notifications", verbosity=0, stdout=StringIO())
         notification = Notification.objects.get(user=self.user, type=Notification.Type.PROMPT)
-        prompt = DiaryPrompt.objects.get(id=notification.target_id, is_active=True)
+        self.assertIsNotNone(notification.target_id)
+        prompt = DiaryPrompt.objects.get(pk=notification.target_id or 0, is_active=True)
         self.assertEqual(notification.body, prompt.text)
         listed = self.client.get(reverse("notification-list")).data["results"][0]
         self.assertEqual(listed["target_id"], prompt.id)
