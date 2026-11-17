@@ -308,6 +308,46 @@ def _create(users: dict[str, User], arrive_in: int, result: SeedResult) -> None:
     )
     _deliver(read, now - timedelta(days=1, hours=2), read=True)
 
+    # 시연1 ↔ 시연5: 왕복 3번이 끝난 펜팔 친구 (5-14·5-15). 마지막은 시연5의 편지라 시연1이 답장할 차례다
+    penpal_bodies = (
+        (
+            d1,
+            "망원 노을 사진처럼 보여요. 저는 성북천 노을을 자주 봐요. 경포대 노을은 어떤 색이에요?",
+        ),
+        (d5, "경포대는 바다 위로 분홍빛이 길게 번져요. 성북천은 처음 들어 봐요. 어떤 곳이에요?"),
+        (d1, "작은 개천인데 밤에 산책하기 좋아요. 커피 좋아하시면 근처 로스터리도 알려 드릴게요."),
+        (d5, "커피라면 언제나 좋아요! 강릉 안목해변 커피거리도 꼭 한번 가 보세요."),
+        (d1, "다음 방학에 꼭 가 볼게요. 부산 오시면 제가 어묵 투어 해 드릴게요."),
+        (d5, "약속이에요. 이번 주말엔 연남동에서 핸드드립 클래스를 들어요. 다녀와서 또 쓸게요."),
+    )
+    previous: Letter | None = None
+    for step, (sender, body) in enumerate(penpal_bodies):
+        if previous is None:
+            previous = _send(sender, diary=diaries["demo5"][0], body=body)
+        else:
+            previous = _send(sender, reply_to=previous, body=body)
+        _deliver(previous, now - timedelta(hours=70 - step * 11), read=True)
+
+    # 시연4 → 시연1: 읽고 넘긴 첫 편지. 보관함(넘긴 편지)에 보인다
+    passed = _send(
+        d4,
+        diary=diaries["demo1"][1],
+        body="광주도 은행잎이 다 떨어졌어요. 바다가 그리우면 목포 바다라도 보러 가세요.",
+    )
+    _deliver(passed, now - timedelta(hours=20), read=True)
+    Conversation.objects.filter(pk=passed.conversation_id).update(
+        passed_at=now - timedelta(hours=12)
+    )
+
+    # 시연1이 시연3 일기(성심당)에 쓰다 만 첫 편지. 임시저장(7-3)과 이어 쓰기(4-9)에 보인다
+    Draft.objects.create(
+        owner=d1,
+        diary=diaries["demo3"][1],
+        body="성심당 줄 저도 포기한 적 있어요! 평일 아침 일찍 가면",
+        stationery="basic",
+        font="nanum-pen",
+    )
+
     # 시연4 → 시연1: 시연 중 arrive_in분 뒤 도착 (도착 알림을 보여 준다)
     soon = _send(
         d4,
