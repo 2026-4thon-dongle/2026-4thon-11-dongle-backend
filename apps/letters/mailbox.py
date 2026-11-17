@@ -93,11 +93,24 @@ def in_conversation_tab(view: ConversationView, viewer_id: int) -> bool:
     return conversation.passed_at is None and len(view.letters) >= 2
 
 
-def conversation_tab(viewer: User, now: datetime) -> list[ConversationView]:
-    views = [v for v in conversation_views(viewer, now) if in_conversation_tab(v, viewer.pk)]
+def conversation_tab(
+    viewer: User, now: datetime, views: list[ConversationView] | None = None
+) -> list[ConversationView]:
+    """대화 중 탭. 이미 만든 conversation_views를 넘기면 다시 조회하지 않는다."""
+    if views is None:
+        views = conversation_views(viewer, now)
+    views = [v for v in views if in_conversation_tab(v, viewer.pk)]
     views.sort(key=lambda v: v.latest.sent_at, reverse=True)
     views.sort(key=lambda v: STATUS_ORDER[v.status])
     return views
+
+
+def round_trips_by_partner(views: list[ConversationView], viewer_id: int) -> dict[int, int]:
+    """상대 id → 그 상대와의 왕복 수 합계. services.pair_round_trips와 같은 값을 쿼리 없이 센다."""
+    trips: dict[int, int] = defaultdict(int)
+    for view in views:
+        trips[view.conversation.partner_of(viewer_id)] += view.round_trips
+    return trips
 
 
 def get_conversation_view(

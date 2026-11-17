@@ -24,11 +24,13 @@ from .mailbox import (
     can_pass,
     can_reply,
     conversation_tab,
+    conversation_views,
     get_conversation_view,
     in_transit_letters,
     new_letters,
     penpals,
     preview,
+    round_trips_by_partner,
 )
 from .mailbox_serializers import (
     ArchiveItemSerializer,
@@ -188,17 +190,20 @@ class ConversationListView(MailboxListView):
     )
     def get(self, request: Request) -> Response:
         viewer, now = _viewer(request), timezone.now()
+        # 대화마다 펜팔 여부를 따로 조회하지 않도록 불러온 대화로 상대별 왕복 수를 한 번에 센다
+        views = conversation_views(viewer, now)
+        trips = round_trips_by_partner(views, viewer.pk)
         items = [
             {
                 "id": view.conversation.id,
                 "partner": _partner(_partner_of(view, viewer)),
                 "status": view.status,
                 "round_trips": view.round_trips,
-                "is_penpal": _is_penpal(view),
+                "is_penpal": trips[view.conversation.partner_of(viewer.pk)] >= PENPAL_ROUND_TRIPS,
                 "last_letter": _last_letter(view.latest, viewer, now),
                 "closed_at": view.closed_at,
             }
-            for view in conversation_tab(viewer, now)
+            for view in conversation_tab(viewer, now, views)
         ]
         return self.paginated(items)
 
