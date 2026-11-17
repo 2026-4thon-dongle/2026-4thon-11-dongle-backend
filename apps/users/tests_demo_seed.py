@@ -6,8 +6,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.diaries.models import Diary
-from apps.letters.models import Conversation, Letter
+from apps.games.models import GameRun
+from apps.letters.models import Conversation, Draft, Letter
+from apps.letters.services import PENPAL_ROUND_TRIPS, pair_round_trips
 from apps.letters.testing import client_for, make_diary, make_user, region, send
+from apps.moderations.models import Block, Report
 from apps.stamps.models import UserStamp
 
 from .demo_seed import DEMO_DOMAIN, demo_users
@@ -36,7 +39,8 @@ class SeedDemoTests(TestCase):
 
     def test_creates_demo_scenario(self) -> None:
         run()
-        self.assertEqual(self.counts()[:3], (5, 10, 7))
+        # 편지: 기존 장면 7통 + 펜팔 6통 + 넘긴 편지 1통
+        self.assertEqual(self.counts()[:3], (5, 10, 14))
         hero = client_for(demo("demo1"))
         new = hero.get(reverse("mailbox-new")).json()
         self.assertEqual(len(new["results"]), 1)
@@ -45,6 +49,53 @@ class SeedDemoTests(TestCase):
         # 우표 5개 이상이라 「밤하늘」 편지지와 스티커가 열려 있다
         self.assertGreaterEqual(UserStamp.objects.filter(user=demo("demo1")).count(), 5)
         self.assertEqual(hero.get(reverse("feed-hometown")).status_code, 200)
+
+    def test_penpal_archive_and_draft(self) -> None:
+        run()
+        hero = client_for(demo("demo1"))
+        self.assertGreaterEqual(
+            pair_round_trips(demo("demo1").pk, demo("demo5").pk), PENPAL_ROUND_TRIPS
+        )
+        penpals = hero.get(reverse("penpal-list")).json()["results"]
+        self.assertIn("강릉커피", [item["partner"]["nickname"] for item in penpals])
+        chats = hero.get(reverse("mailbox-conversations")).json()["results"]
+        coffee = next(c for c in chats if c["partner"]["nickname"] == "강릉커피")
+        self.assertTrue(coffee["is_penpal"])
+        self.assertEqual(coffee["status"], "my_turn")
+        archive = hero.get(reverse("mailbox-archive")).json()["results"]
+        self.assertEqual([item["kind"] for item in archive], ["passed_letter"])
+        drafts = hero.get(reverse("letter-draft-list")).json()["results"]
+        self.assertEqual(len(drafts), 1)
+
+    def test_reset_clears_demo_activity(self) -> None:
+        run()
+        hero_user, other = demo("demo1"), demo("demo2")
+        hero = client_for(hero_user)
+        outsider = make_user("손님", region("서울", "종로구"), region("부산"))
+        self.assertEqual(hero.post(reverse("game-run-start"), {}, format="json").status_code, 201)
+        self.assertEqual(
+            hero.post(reverse("block-list"), {"user_id": other.pk}, format="json").status_code, 201
+        )
+        diary = Diary.objects.filter(author=demo("demo3")).first()
+        assert diary is not None
+        report = {"target_type": "diary", "target_id": diary.pk, "reason": "spam"}
+        self.assertEqual(
+            hero.post(reverse("report-create"), report, format="json").status_code, 201
+        )
+        client_for(outsider).post(reverse("block-list"), {"user_id": hero_user.pk}, format="json")
+        User.objects.filter(pk=hero_user.pk).update(push_enabled=False, daily_digest_enabled=True)
+
+        run()
+
+        self.assertFalse(GameRun.objects.filter(user=hero_user).exists())
+        self.assertFalse(Block.objects.filter(blocker=hero_user).exists())
+        self.assertFalse(Report.objects.filter(reporter=hero_user).exists())
+        # 다른 사용자가 시연 계정을 차단한 기록은 그 사용자의 데이터라 남긴다
+        self.assertTrue(Block.objects.filter(blocker=outsider, blocked=hero_user).exists())
+        hero_user.refresh_from_db()
+        self.assertTrue(hero_user.push_enabled)
+        self.assertFalse(hero_user.daily_digest_enabled)
+        self.assertEqual(Draft.objects.filter(owner=hero_user).count(), 1)
 
     def test_in_transit_letters_ignore_demo_mode(self) -> None:
         with override_settings(LETTER_DEMO_MODE=True):
