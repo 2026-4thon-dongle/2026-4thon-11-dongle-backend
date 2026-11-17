@@ -45,7 +45,7 @@ brew install mailpit && mailpit
 
 `.env`에 `EMAIL_HOST=localhost`, `EMAIL_PORT=1025`를 넣고 runserver를 띄운 뒤, 인증 코드를 http://localhost:8025 에서 확인한다. `EMAIL_HOST`를 비워 두면 인증 코드가 `runserver` 콘솔에 출력된다.
 
-배포 서버에서도 같은 방식으로 Mailpit을 띄우고 `EMAIL_HOST`를 Mailpit 주소로 넣는다. 시연 때는 Mailpit 웹 화면(8025)을 열어 두고 코드를 확인한다. 웹 화면은 누구나 메일을 볼 수 있으므로 외부에 열 때는 Mailpit의 `--ui-auth-file`로 비밀번호를 건다.
+배포 서버에서도 같은 방식으로 Mailpit을 띄우고 `EMAIL_HOST`를 Mailpit 주소로 넣는다. 시연 때는 Mailpit 웹 화면(8025)을 열어 두고 코드를 확인한다. 웹 화면은 누구나 메일을 볼 수 있으므로 외부에 열 때는 비밀번호를 건다(Mailpit `MP_UI_AUTH`, compose에서는 환경변수 `MAILPIT_UI_AUTH`).
 
 매주 월요일 글감 알림은 스케줄러로 `python manage.py create_weekly_prompt_notifications`를 실행한다.
 
@@ -61,14 +61,14 @@ brew install mailpit && mailpit
 |---|---|---|
 | `api` | gunicorn. 시작할 때 `migrate`가 지역·우표·글감 기본 데이터까지 넣는다 | `https://dongle-api.zanviq.dev` (8000) |
 | `db` | PostgreSQL 17. 데이터는 `${HOSTING_DATA_DIR}/postgres` | 없음 |
-| `mailpit` | 인증 메일 가상 메일함 | `https://dongle-mail.zanviq.dev` (8025). 비밀번호 없음 |
+| `mailpit` | 인증 메일 가상 메일함 | `https://dongle-mail.zanviq.dev` (8025). 웹 화면·API에 비밀번호(`MAILPIT_UI_AUTH`) |
 | `notifier` | 60초마다 `notify_arrived_letters`. 한 시간에 한 번 한국 시간 월요일 9시 이후면 `create_weekly_prompt_notifications`(같은 주에 사용자당 한 번) | 없음 |
 | `init-media` | 업로드 폴더 소유자를 맞추는 한 번짜리 | 없음 |
 | `demo-seed` | `DEMO_SEED=true`일 때만 시연 데이터를 만드는 한 번짜리(아래 「시연 준비」) | 없음 |
 
 - 프론트는 API 기본 주소 `https://dongle-api.zanviq.dev/api/`를 쓴다. Swagger는 `/api/docs/`다.
-- 인증 코드는 Mailpit 화면에서 본다. 누구나 볼 수 있으므로 시연·테스트 기간에만 열어 둔다.
-- 플랫폼 환경변수(비밀값은 저장소에 넣지 않는다): `SECRET_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`(`localhost,127.0.0.1`과 API 도메인), `CORS_ALLOWED_ORIGINS`(프론트 주소를 쉼표로), `CSRF_TRUSTED_ORIGINS`(`https://API 도메인`), `LETTER_DEMO_MODE`.
+- 인증 코드는 Mailpit 화면에서 본다. 화면과 API는 `MAILPIT_UI_AUTH`(`사용자:비밀번호`)로 잠겨 있고, 계정은 팀 안에서만 공유한다(문서 레포 `api/auth.md`). 상태 확인(`/mailpit readyz`)과 api의 SMTP 발송은 비밀번호와 상관없다.
+- 플랫폼 환경변수(비밀값은 저장소에 넣지 않는다): `SECRET_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`(`localhost,127.0.0.1`과 API 도메인), `CORS_ALLOWED_ORIGINS`(프론트 주소를 쉼표로), `CSRF_TRUSTED_ORIGINS`(`https://API 도메인`), `LETTER_DEMO_MODE`, `MAILPIT_UI_AUTH`.
 - 프론트 주소가 바뀌면 `CORS_ALLOWED_ORIGINS`에 추가하고 다시 배포한다.
 - 로컬에서 같은 구성을 확인하려면 위 값을 `.env`에 넣고 `docker compose up --build`를 실행한다. 호스트 포트는 열지 않으므로 `docker compose exec api python -c ...`나 `docker compose exec mailpit ...`로 확인한다.
 - 관리자 계정이 필요하면 `docker compose exec api python manage.py createsuperuser`를 실행한다(플랫폼에서는 서버에서 같은 명령).
