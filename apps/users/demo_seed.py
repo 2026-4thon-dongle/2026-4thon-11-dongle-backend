@@ -14,10 +14,12 @@ from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from apps.diaries.models import Diary
+from apps.games.models import GameRun
 from apps.letters.delivery import DURATION_MINUTES
 from apps.letters.models import Conversation, Draft, Letter
 from apps.letters.notifications import notify_departed
 from apps.letters.services import send_letter
+from apps.moderations.models import Block, Report
 from apps.notifications.models import Notification
 from apps.regions.models import Region
 from apps.stamps.models import RewardSeen, Stamp, UserStamp
@@ -130,7 +132,10 @@ def _mixed_conversations(ids: list[int]) -> QuerySet[Conversation]:
 
 
 def _clear(ids: list[int], result: SeedResult) -> None:
-    """시연 계정끼리의 데이터만 지운다."""
+    """시연 계정끼리의 데이터와 시연 계정이 남긴 기록(게임, 차단, 신고)을 지운다.
+
+    다른 사용자가 시연 계정을 차단·신고한 기록은 그 사용자의 데이터라 남긴다.
+    """
     mixed = _mixed_conversations(ids)
     result.kept_conversations = mixed.count()
     # 다른 사용자의 대화나 임시저장이 달린 일기는 지우면 그 사용자의 데이터가 함께 바뀌므로 남긴다
@@ -144,6 +149,9 @@ def _clear(ids: list[int], result: SeedResult) -> None:
     Notification.objects.filter(user_id__in=ids).delete()
     UserStamp.objects.filter(user_id__in=ids).delete()
     RewardSeen.objects.filter(user_id__in=ids).delete()
+    GameRun.objects.filter(user_id__in=ids).delete()
+    Block.objects.filter(blocker_id__in=ids).delete()
+    Report.objects.filter(reporter_id__in=ids).delete()
 
 
 def _check_nicknames() -> None:
@@ -166,7 +174,13 @@ def _ensure_user(spec: DemoUser) -> User:
         user = User.objects.create_user(spec.email, spec.nickname)
     user.nickname = spec.nickname
     user.residence = _region(*spec.residence)
+    # 설정 화면(7-1-1, 7-11)도 처음 상태로 되돌린다. 값은 User 모델의 기본값과 같다.
     user.letter_paused = False
+    user.push_enabled = True
+    user.daily_digest_enabled = False
+    user.weekly_prompt_enabled = True
+    user.letter_arrival_push_enabled = True
+    user.letter_departure_push_enabled = True
     user.save()
     user.hometowns.set([_region(*spec.hometown)])
     TermsAgreement.objects.get_or_create(user=user, defaults={"version": settings.TERMS_VERSION})
@@ -273,8 +287,10 @@ def _create(users: dict[str, User], arrive_in: int, result: SeedResult) -> None:
     )
     _deliver(unread, now - timedelta(hours=14), read=False)
 
-    # 시연1 꾸미기 우표: 우표가 5개를 넘어 스티커·「밤하늘」 보상이 열린다
-    grant_stamps(d1, DECORATION_STAMPS)
+    # 시연1 꾸미기 우표: 우표가 5개를 넘어 스티커·「밤하늘」 보상이 열린다.
+    # 「새벽 편지」는 실행 시각(0~5시)에 따라 생기므로 늘 준다. 시연1은 우표 9개가 되어
+    # 시연 중 배달 게임 한 판 성공(별사탕)으로 10개째 「우표 수집가」 보상이 열린다.
+    grant_stamps(d1, [*DECORATION_STAMPS, "dawn-letter"])
 
     # 시연1 → 시연4: 배송 중 (배송 경로 화면용). 열린 편지지·스티커를 쓴다
     outgoing = _send(
@@ -293,6 +309,47 @@ def _create(users: dict[str, User], arrive_in: int, result: SeedResult) -> None:
         body="해운대 아침 바다 부러워요. 서울 한강도 아침엔 꽤 조용해요.",
     )
     _deliver(read, now - timedelta(days=1, hours=2), read=True)
+
+    # 시연1 ↔ 시연5: 왕복 3번이 끝난 펜팔 친구 (5-14·5-15).
+    # 마지막은 시연5의 편지라 시연1이 답장할 차례다
+    penpal_bodies = (
+        (
+            d1,
+            "망원 노을 사진처럼 보여요. 저는 성북천 노을을 자주 봐요. 경포대 노을은 어떤 색이에요?",
+        ),
+        (d5, "경포대는 바다 위로 분홍빛이 길게 번져요. 성북천은 처음 들어 봐요. 어떤 곳이에요?"),
+        (d1, "작은 개천인데 밤에 산책하기 좋아요. 커피 좋아하시면 근처 로스터리도 알려 드릴게요."),
+        (d5, "커피라면 언제나 좋아요! 강릉 안목해변 커피거리도 꼭 한번 가 보세요."),
+        (d1, "다음 방학에 꼭 가 볼게요. 부산 오시면 제가 어묵 투어 해 드릴게요."),
+        (d5, "약속이에요. 이번 주말엔 연남동에서 핸드드립 클래스를 들어요. 다녀와서 또 쓸게요."),
+    )
+    previous: Letter | None = None
+    for step, (sender, body) in enumerate(penpal_bodies):
+        if previous is None:
+            previous = _send(sender, diary=diaries["demo5"][0], body=body)
+        else:
+            previous = _send(sender, reply_to=previous, body=body)
+        _deliver(previous, now - timedelta(hours=70 - step * 11), read=True)
+
+    # 시연4 → 시연1: 읽고 넘긴 첫 편지. 보관함(넘긴 편지)에 보인다
+    passed = _send(
+        d4,
+        diary=diaries["demo1"][1],
+        body="광주도 은행잎이 다 떨어졌어요. 바다가 그리우면 목포 바다라도 보러 가세요.",
+    )
+    _deliver(passed, now - timedelta(hours=20), read=True)
+    Conversation.objects.filter(pk=passed.conversation_id).update(
+        passed_at=now - timedelta(hours=12)
+    )
+
+    # 시연1이 시연3 일기(성심당)에 쓰다 만 첫 편지. 임시저장(7-3)과 이어 쓰기(4-9)에 보인다
+    Draft.objects.create(
+        owner=d1,
+        diary=diaries["demo3"][1],
+        body="성심당 줄 저도 포기한 적 있어요! 평일 아침 일찍 가면",
+        stationery="basic",
+        font="nanum-pen",
+    )
 
     # 시연4 → 시연1: 시연 중 arrive_in분 뒤 도착 (도착 알림을 보여 준다)
     soon = _send(
