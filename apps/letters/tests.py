@@ -238,6 +238,22 @@ class SendTests(TestCase):
             self.assertEqual(response.data["code"], "VALIDATION_ERROR", scale)
         self.assertFalse(Letter.objects.exists())
 
+    def test_sticker_bad_code_or_number_is_validation_error(self) -> None:
+        give_stamps(self.guest, 2)
+        bad_stickers = [
+            {"code": ["cat-wink"], "x": 0.5, "y": 0.5},
+            {"code": {"a": 1}, "x": 0.5, "y": 0.5},
+            {"code": 3, "x": 0.5, "y": 0.5},
+            {"code": "cat-wink", "x": 0.5, "y": 0.5, "rotation": "nan"},
+            {"code": "cat-wink", "x": 0.5, "y": 0.5, "rotation": "inf"},
+            {"code": "cat-wink", "x": 0.5, "y": 0.5, "rotation": "-Infinity"},
+        ]
+        for sticker in bad_stickers:
+            response = send(self.guest_client, diary_id=self.diary.id, stickers=[sticker])
+            self.assertEqual(response.status_code, 400, sticker)
+            self.assertEqual(response.data["code"], "VALIDATION_ERROR", sticker)
+        self.assertFalse(Letter.objects.exists())
+
     def test_reply_round_trip(self) -> None:
         first = send(self.guest_client, diary_id=self.diary.id).data
         early = send(self.host_client, reply_to=first["id"])
