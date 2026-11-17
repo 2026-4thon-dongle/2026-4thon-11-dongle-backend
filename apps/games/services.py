@@ -67,10 +67,19 @@ class LetterGameState:
     reducible_seconds: int
 
 
-def letter_state(user: User, letter: Letter, now: datetime) -> LetterGameState:
+def letter_state(
+    user: User,
+    letter: Letter,
+    now: datetime,
+    used: int | None = None,
+    reduced: int | None = None,
+) -> LetterGameState:
+    """used(내 판수)·reduced(두 사람이 줄인 합계)를 미리 셌으면 넘겨 다시 조회하지 않는다."""
     remaining = remaining_seconds(letter, now)
-    used = GameRun.objects.filter(user=user, letter=letter).count()
-    reduced = reduced_total(letter)
+    if used is None:
+        used = GameRun.objects.filter(user=user, letter=letter).count()
+    if reduced is None:
+        reduced = reduced_total(letter)
     cap = rules.max_reduce_seconds(letter.duration_minutes)
     reducible = max(0, min(cap - reduced, remaining - rules.floor_seconds()))
     reason = None
@@ -92,6 +101,33 @@ def letter_state(user: User, letter: Letter, now: datetime) -> LetterGameState:
         max_reduce_seconds=cap,
         reducible_seconds=reducible if reason is None else 0,
     )
+
+
+def letter_states(user: User, letters: list[Letter], now: datetime) -> dict[int, LetterGameState]:
+    """여러 편지의 게임 상태. 편지마다 조회하지 않고 판수·단축 합계를 두 번에 센다."""
+    ids = [letter.id for letter in letters]
+    used = dict(
+        GameRun.objects.filter(user=user, letter_id__in=ids)
+        .values("letter_id")
+        .annotate(n=Count("id"))
+        .values_list("letter_id", "n")
+    )
+    reduced = dict(
+        GameRun.objects.filter(letter_id__in=ids)
+        .values("letter_id")
+        .annotate(total=Sum("reduced_seconds"))
+        .values_list("letter_id", "total")
+    )
+    return {
+        letter.id: letter_state(
+            user,
+            letter,
+            now,
+            used=used.get(letter.id, 0),
+            reduced=int(reduced.get(letter.id) or 0),
+        )
+        for letter in letters
+    }
 
 
 def today_played(user: User, now: datetime) -> int:
