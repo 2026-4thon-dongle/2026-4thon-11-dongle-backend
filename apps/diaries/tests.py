@@ -104,6 +104,16 @@ class DiaryApiTests(TestCase):
         self.assertEqual(self.create(image=fake).status_code, 400)
         self.assertEqual(self.create(image=png("a.gif", "GIF")).status_code, 400)
 
+    def test_accepts_phone_jpeg_with_mpf(self) -> None:
+        # 휴대폰 카메라 JPEG(MPF 포함)는 Pillow가 MPO로 읽는다
+        buffer = io.BytesIO()
+        first, second = Image.new("RGB", (4, 3), "red"), Image.new("RGB", (4, 3), "blue")
+        first.save(buffer, "MPO", save_all=True, append_images=[second])
+        photo = SimpleUploadedFile("phone.jpg", buffer.getvalue(), content_type="image/jpeg")
+        response = self.create(image=photo)
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertIn("/media/diaries/", response.data["image"])
+
     def test_update_delete_only_own(self) -> None:
         other = make_user("다른사람")
         diary = Diary.objects.create(author=other, region=cheonan(), body="x")
