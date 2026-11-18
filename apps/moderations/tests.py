@@ -48,6 +48,35 @@ class ReportTests(TestCase):
         self.assertTrue(Block.objects.filter(blocker=self.reporter, blocked=self.author).exists())
         self.assertFalse(Diary.objects.visible_to(self.reporter).filter(id=self.diary.id).exists())
 
+    def test_report_hides_all_diaries_of_author_for_reporter(self) -> None:
+        other_diary = Diary.objects.create(author=self.author, region=cheonan(), body="y")
+        self.assertEqual(self.report().status_code, 201)
+        visible = Diary.objects.visible_to(self.reporter)
+        self.assertFalse(visible.filter(author=self.author).exists())
+        self.assertTrue(
+            Diary.objects.visible_to(make_user("남남")).filter(id=other_diary.id).exists()
+        )
+
+    def test_letter_report_hides_sender_diaries(self) -> None:
+        Report.objects.create(
+            reporter=self.reporter,
+            target_user=self.author,
+            target_type=Report.TargetType.LETTER,
+            target_id=1,
+            reason=Report.Reason.SPAM,
+        )
+        self.assertFalse(Diary.objects.visible_to(self.reporter).filter(id=self.diary.id).exists())
+
+    def test_report_on_withdrawn_user_hides_nothing_else(self) -> None:
+        Report.objects.create(
+            reporter=self.reporter,
+            target_user=None,
+            target_type=Report.TargetType.USER,
+            target_id=999999,
+            reason=Report.Reason.SPAM,
+        )
+        self.assertTrue(Diary.objects.visible_to(self.reporter).filter(id=self.diary.id).exists())
+
     def test_three_reports_hide_globally(self) -> None:
         self.report(make_user("가가"))
         self.report(make_user("나나"))
