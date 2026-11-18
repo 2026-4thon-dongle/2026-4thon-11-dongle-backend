@@ -88,7 +88,8 @@ class MailboxTests(TestCase):
         letter = self.first_letter()
         arrive(letter["id"])
         reply = send(self.host_api, reply_to=letter["id"]).data
-        self.assertEqual(self.get(self.host_api, "mailbox-new")["count"], 0)
+        host_new = self.get(self.host_api, "mailbox-new")["results"]
+        self.assertEqual([i["direction"] for i in host_new], ["sent"])
         host_item = self.get(self.host_api, "mailbox-conversations")["results"][0]
         self.assertEqual((host_item["status"], host_item["round_trips"]), ("in_transit", 1))
         self.assertIsNone(host_item["last_letter"]["preview"])
@@ -181,6 +182,27 @@ class MailboxTests(TestCase):
         self.assertEqual([i["id"] for i in filtered], [first["id"]])
         bad = self.host_api.get(reverse("mailbox-new"), {"ordering": "x"})
         self.assertEqual(bad.status_code, 400)
+
+    def test_new_all_includes_my_sent_letters(self) -> None:
+        letter = self.first_letter()
+        mine = self.get(self.guest_api, "mailbox-new")["results"]
+        self.assertEqual(
+            [(i["id"], i["direction"], i["recipient"]["nickname"]) for i in mine],
+            [(letter["id"], "sent", "하늘빛")],
+        )
+        self.assertTrue(mine[0]["is_read"])
+        seoul = region("서울").id
+        self.assertEqual(self.get(self.guest_api, "mailbox-new", sido=seoul)["count"], 0)
+
+        arrive(letter["id"])
+        reply = send(self.host_api, reply_to=letter["id"]).data
+        received = self.get(self.host_api, "mailbox-new")["results"]
+        self.assertEqual([i["direction"] for i in received], ["sent"])
+        self.assertEqual(received[0]["id"], reply["id"])
+
+        arrive(reply["id"])
+        guest_view = self.get(self.guest_api, "mailbox-new", ordering="unread")["results"]
+        self.assertEqual([i["id"] for i in guest_view], [letter["id"]])
 
     def test_blocked_hidden(self) -> None:
         letter = self.first_letter()
