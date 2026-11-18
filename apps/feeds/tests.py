@@ -64,6 +64,7 @@ class HometownFeedTests(FeedTestCase):
     def test_reported_diary_is_excluded(self) -> None:
         Report.objects.create(
             reporter=self.viewer,
+            target_user=self.cheonan,
             target_type=Report.TargetType.DIARY,
             target_id=self.d_cheonan.id,
             reason=Report.Reason.SPAM,
