@@ -144,3 +144,13 @@ class Draft(models.Model):
     @property
     def kind(self) -> str:
         return self.Kind.FIRST if self.diary_id is not None else self.Kind.REPLY
+
+
+class DemoModeSetting(models.Model):
+    """데모 모드(편지 1분 배송)를 실행 중에 켜고 끄는 값. 행이 없으면 LETTER_DEMO_MODE를 쓴다."""
+
+    enabled = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"demo mode {'on' if self.enabled else 'off'}"

@@ -5,9 +5,9 @@
 
 import math
 
-from django.conf import settings
-
 from apps.regions.models import Region
+
+from .demo_mode import is_demo_mode
 
 SAME_SIDO = "same_sido"
 ADJACENT = "adjacent"
@@ -90,6 +90,6 @@ def band_between(origin: Region, destination: Region) -> str:
 
 
 def duration_minutes(band: str) -> int:
-    if settings.LETTER_DEMO_MODE:
+    if is_demo_mode():
         return DEMO_DURATION_MINUTES
     return DURATION_MINUTES[band]

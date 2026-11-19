@@ -11,12 +11,13 @@ from django.urls import reverse
 from PIL import Image
 from rest_framework.test import APIClient
 
+from apps.diaries.models import Diary
 from apps.moderations.models import Block
 from apps.stamps.models import RewardSeen, Stamp, UserStamp
 from apps.users.models import User
 
 from .delivery import ADJACENT, FAR, NEAR, SAME_SIDO, band_between, duration_minutes
-from .models import Conversation, Letter
+from .models import Conversation, Draft, Letter
 from .testing import arrive, client_for, make_diary, make_user, region, send
 
 MEDIA = tempfile.mkdtemp()
@@ -321,3 +322,50 @@ class SendTests(TestCase):
         data = send(self.guest_client, diary_id=self.diary.id).data
         self.assertEqual(data["duration_minutes"], 1)
         self.assertEqual(data["band"], NEAR)
+
+
+class DemoModeToggleTests(TestCase):
+    def setUp(self) -> None:
+        self.user = make_user("toggle", region("서울", "성북구"))
+        self.client = client_for(self.user)
+        self.url = reverse("letter-demo-mode")
+
+    def test_requires_login(self) -> None:
+        self.assertEqual(APIClient().get(self.url).status_code, 401)
+
+    @override_settings(LETTER_DEMO_MODE=False)
+    def test_defaults_to_env_then_db_overrides(self) -> None:
+        self.assertEqual(self.client.get(self.url).json(), {"enabled": False})
+        self.assertEqual(duration_minutes(FAR), 720)
+
+        self.assertEqual(
+            self.client.put(self.url, {"enabled": True}, format="json").json(), {"enabled": True}
+        )
+        self.assertEqual(self.client.get(self.url).json(), {"enabled": True})
+        self.assertEqual(duration_minutes(FAR), 1)
+
+        self.client.put(self.url, {"enabled": False}, format="json")
+        self.assertEqual(duration_minutes(FAR), 720)
+
+    @override_settings(LETTER_DEMO_MODE=True)
+    def test_db_off_beats_env_on(self) -> None:
+        self.client.put(self.url, {"enabled": False}, format="json")
+        self.assertEqual(duration_minutes(FAR), 720)
+
+    def test_rejects_non_boolean(self) -> None:
+        response = self.client.put(self.url, {"enabled": "maybe"}, format="json")
+        self.assertEqual(response.status_code, 400)
+
+
+class WipeContentTests(TestCase):
+    def test_deletes_diaries_and_letters_but_keeps_accounts(self) -> None:
+        from django.core.management import call_command
+
+        sender = make_user("wiper", region("서울", "성북구"))
+        receiver = make_user("wiped", region("부산", "해운대구"), region("서울", "성북구"))
+        make_diary(sender)
+        Draft.objects.count()
+        call_command("wipe_content", stdout=io.StringIO())
+        self.assertEqual(Diary.objects.count(), 0)
+        self.assertEqual(Letter.objects.count(), 0)
+        self.assertEqual(User.objects.filter(id__in=[sender.id, receiver.id]).count(), 2)
