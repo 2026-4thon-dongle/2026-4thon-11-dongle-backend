@@ -47,6 +47,28 @@ brew install mailpit && mailpit
 
 배포 서버에서도 같은 방식으로 Mailpit을 띄우고 `EMAIL_HOST`를 Mailpit 주소로 넣는다. 시연 때는 Mailpit 웹 화면(8025)을 열어 두고 코드를 확인한다. 웹 화면은 누구나 메일을 볼 수 있으므로 외부에 열 때는 비밀번호를 건다(Mailpit `MP_UI_AUTH`, compose에서는 환경변수 `MAILPIT_UI_AUTH`).
 
+### 실제 메일 발송
+
+Mailpit 대신 가입하는 사람의 실제 메일함으로 인증 코드를 보내려면 SMTP 계정 값을 `.env`(배포는 플랫폼 환경변수)에 넣는다. 코드는 그대로이고 설정만 바꾼다. Gmail 예시:
+
+```bash
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=보내는계정@gmail.com
+EMAIL_HOST_PASSWORD=앱비밀번호16자   # Google 계정 → 보안 → 2단계 인증 켜기 → 앱 비밀번호. 공백 없이
+DEFAULT_FROM_EMAIL=동글 <보내는계정@gmail.com>   # Gmail은 보내는 주소가 계정 주소와 같아야 한다
+```
+
+- 시연 주소(`DEMO_EMAIL_DOMAINS`, 기본 `dongle-demo.ac.kr`·`guest-demo.ac.kr`)는 실제로 없는 메일이라, 실제 SMTP를 켜도 `DEMO_EMAIL_HOST`의 SMTP로 보낸다. compose는 `DEMO_EMAIL_HOST=mailpit`이라 시연 계정 코드는 계속 Mailpit 화면에서 본다. 로컬에서 `DEMO_EMAIL_HOST`를 비우면 모든 메일이 위 설정을 따른다.
+- Gmail 개인 계정은 하루 약 500통까지 보낼 수 있어 시연·QA에 충분하다.
+- 학교 메일(`ac.kr`)이 스팸함으로 거를 수 있으므로 처음에는 스팸함도 확인한다.
+- 발송에 실패하면 API가 503 `EMAIL_SEND_FAILED`를 준다. API 응답만으로는 원인(계정·비밀번호 오류 등)을 알 수 없으므로 아래 명령으로 직접 보내 보고 에러를 확인한다.
+
+  ```bash
+  python manage.py sendtestemail 받을주소@example.com   # 배포 서버에서는 docker compose exec api python manage.py sendtestemail ...
+  ```
+
 매주 월요일 글감 알림은 스케줄러로 `python manage.py create_weekly_prompt_notifications`를 실행한다.
 
 편지 도착 알림은 스케줄러로 1분마다 `python manage.py notify_arrived_letters`를 실행한다. 스케줄러가 없어도 알림 목록·안 읽은 수를 조회할 때 그 사용자의 도착 알림이 만들어진다.
@@ -67,8 +89,8 @@ brew install mailpit && mailpit
 | `demo-seed` | `DEMO_SEED=true`일 때만 시연 데이터를 만드는 한 번짜리(아래 「시연 준비」) | 없음 |
 
 - 프론트는 API 기본 주소 `https://dongle-api.zanviq.dev/api/`를 쓴다. Swagger는 `/api/docs/`다.
-- 인증 코드는 Mailpit 화면에서 본다. 화면과 API는 `MAILPIT_UI_AUTH`(`사용자:비밀번호`)로 잠겨 있고, 계정은 팀 안에서만 공유한다(문서 레포 `api/auth.md`). 상태 확인(`/mailpit readyz`)과 api의 SMTP 발송은 비밀번호와 상관없다.
-- 플랫폼 환경변수(비밀값은 저장소에 넣지 않는다): `SECRET_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`(`localhost,127.0.0.1`과 API 도메인), `CORS_ALLOWED_ORIGINS`(프론트 주소를 쉼표로), `CSRF_TRUSTED_ORIGINS`(`https://API 도메인`), `LETTER_DEMO_MODE`, `MAILPIT_UI_AUTH`.
+- 인증 코드는 플랫폼 환경변수에 `EMAIL_HOST`와 SMTP 계정 값(위 「실제 메일 발송」)을 넣으면 사용자 메일함으로 간다. 넣지 않으면 Mailpit 화면에서 본다. 시연 주소(`@dongle-demo.ac.kr`·`@guest-demo.ac.kr`)는 어느 쪽이든 Mailpit으로 간다. 화면과 API는 `MAILPIT_UI_AUTH`(`사용자:비밀번호`)로 잠겨 있고, 계정은 팀 안에서만 공유한다(문서 레포 `api/auth.md`). 상태 확인(`/mailpit readyz`)과 api의 SMTP 발송은 비밀번호와 상관없다.
+- 플랫폼 환경변수(비밀값은 저장소에 넣지 않는다): `SECRET_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`(`localhost,127.0.0.1`과 API 도메인), `CORS_ALLOWED_ORIGINS`(프론트 주소를 쉼표로), `CSRF_TRUSTED_ORIGINS`(`https://API 도메인`), `LETTER_DEMO_MODE`, `MAILPIT_UI_AUTH`. 실제 메일을 보낼 때는 `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`도 넣는다.
 - 프론트 주소가 바뀌면 `CORS_ALLOWED_ORIGINS`에 추가하고 다시 배포한다.
 - 로컬에서 같은 구성을 확인하려면 위 값을 `.env`에 넣고 `docker compose up --build`를 실행한다. 호스트 포트는 열지 않으므로 `docker compose exec api python -c ...`나 `docker compose exec mailpit ...`로 확인한다.
 - 관리자 계정이 필요하면 `docker compose exec api python manage.py createsuperuser`를 실행한다(플랫폼에서는 서버에서 같은 명령).

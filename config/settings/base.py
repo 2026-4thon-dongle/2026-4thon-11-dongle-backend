@@ -157,6 +157,15 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="동글 <no-reply@dongle.local>")
 
+# 시연 주소(실제로 없는 메일)로 가는 인증 메일은 실제 SMTP를 켜도
+# 이 SMTP(가상 메일함 Mailpit)로 보낸다. DEMO_EMAIL_HOST가 비어 있으면 기본 메일 설정을 따른다.
+DEMO_EMAIL_HOST = env("DEMO_EMAIL_HOST", default="")
+DEMO_EMAIL_PORT = env.int("DEMO_EMAIL_PORT", default=1025)
+DEMO_EMAIL_DOMAINS = [
+    domain.lower()
+    for domain in env.list("DEMO_EMAIL_DOMAINS", default=["dongle-demo.ac.kr", "guest-demo.ac.kr"])
+]
+
 # 약관을 고치면 올린다. 동의 시점의 버전을 TermsAgreement에 저장한다.
 TERMS_VERSION = "2026-11-09"
 

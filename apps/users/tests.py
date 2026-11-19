@@ -1,9 +1,11 @@
 import re
 from datetime import timedelta
 from typing import Any
+from unittest import mock
 
 from django.core import mail
-from django.test import TestCase
+from django.core.mail.backends.smtp import EmailBackend as SmtpEmailBackend
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -16,7 +18,7 @@ from apps.stamps.models import UserStamp
 from apps.stamps.services import FIRST_STEP, grant_stamp
 
 from .models import EmailVerification, TermsAgreement, User
-from .verification import school_name_of
+from .verification import mail_connection_for, school_name_of
 
 EMAIL = "Student@skuniv.ac.kr"
 NORMALIZED_EMAIL = "student@skuniv.ac.kr"
@@ -122,6 +124,49 @@ class EmailCodeTests(AuthTestCase):
         code = self.last_code()
         self.assertEqual(self.verify(code).status_code, 200)
         self.assertEqual(self.verify(code).data["code"], "CODE_NOT_FOUND")
+
+
+@override_settings(
+    DEMO_EMAIL_HOST="mailpit",
+    DEMO_EMAIL_PORT=1025,
+    DEMO_EMAIL_DOMAINS=["dongle-demo.ac.kr", "guest-demo.ac.kr"],
+)
+class DemoMailRoutingTests(AuthTestCase):
+    """실제 SMTP를 켜도 시연 주소의 인증 메일은 Mailpit으로 간다."""
+
+    def test_demo_address_uses_demo_smtp(self) -> None:
+        connection = mail_connection_for("Demo1@Dongle-Demo.ac.kr")
+        assert isinstance(connection, SmtpEmailBackend)
+        self.assertEqual(connection.host, "mailpit")
+        self.assertEqual(connection.port, 1025)
+        self.assertEqual(connection.username, "")
+        self.assertFalse(connection.use_tls)
+        self.assertFalse(connection.use_ssl)
+
+    def test_other_addresses_use_default_settings(self) -> None:
+        self.assertIsNone(mail_connection_for("student@skuniv.ac.kr"))
+        self.assertIsNone(mail_connection_for("a@sub.dongle-demo.ac.kr"))
+
+    @override_settings(DEMO_EMAIL_HOST="")
+    def test_disabled_without_demo_host(self) -> None:
+        self.assertIsNone(mail_connection_for("demo1@dongle-demo.ac.kr"))
+
+    def test_send_code_to_demo_address_uses_demo_connection(self) -> None:
+        locmem = mail.get_connection("django.core.mail.backends.locmem.EmailBackend")
+        with mock.patch(
+            "apps.users.verification.get_connection", return_value=locmem
+        ) as get_connection:
+            response = self.send("judge01@guest-demo.ac.kr")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(get_connection.call_args.kwargs["host"], "mailpit")
+        self.assertEqual(mail.outbox[-1].to, ["judge01@guest-demo.ac.kr"])
+
+    def test_send_code_to_school_address_uses_default_connection(self) -> None:
+        with mock.patch("apps.users.verification.get_connection") as get_connection:
+            response = self.send()
+        self.assertEqual(response.status_code, 200)
+        get_connection.assert_not_called()
+        self.assertEqual(mail.outbox[-1].to, [NORMALIZED_EMAIL])
 
 
 class SignupTests(AuthTestCase):
