@@ -4,7 +4,7 @@
 - 작성자: 서재민 (Claude)
 - 브랜치: `feat/test-email-allowlist`
 - 기준 커밋: `531512c`
-- 상태: 진행 중
+- 상태: 리뷰 중
 - 관련 PR: [#47](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/47)
 
 ## 지금 작업 내용
@@ -49,6 +49,7 @@
 | 날짜 | 내용 |
 |---|---|
 | 2026-11-19 | 작성 |
+| 2026-11-19 | 설정·`is_allowed_email`·테스트 3개·README. sqlite·PostgreSQL 17 테스트 195개, `main`(`e4e1c31`)과 합친 코드 194개, check·ruff·mypy 통과 |
 
 ## 결정·변경 사항과 남은 일
 
