@@ -141,6 +141,17 @@ def new_letters(viewer: User, now: datetime) -> QuerySet[Letter]:
     )
 
 
+def sent_letters(viewer: User) -> QuerySet[Letter]:
+    """내가 보낸 편지 전부. 새 편지 탭 「전체」에 받은 편지와 함께 보여 준다."""
+    return (
+        Letter.objects.filter(sender=viewer)
+        .exclude(recipient_id__in=blocked_user_ids(viewer))
+        .select_related(
+            "recipient__residence__parent", "from_region__parent", "stamp", "conversation__diary"
+        )
+    )
+
+
 def in_transit_letters(viewer: User, now: datetime) -> QuerySet[Letter]:
     blocked = blocked_user_ids(viewer)
     return (

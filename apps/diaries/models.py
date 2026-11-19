@@ -25,15 +25,12 @@ class DiaryQuerySet(models.QuerySet["Diary"]):
         ).exclude(
             Q(author_id__in=Block.objects.filter(blocker=viewer).values("blocked_id"))
             | Q(author_id__in=Block.objects.filter(blocked=viewer).values("blocker_id"))
-            | Q(
-                id__in=Report.objects.filter(
-                    reporter=viewer, target_type=Report.TargetType.DIARY
-                ).values("target_id")
-            )
+            # 일기·편지·사용자 중 무엇을 신고했든 그 작성자의 일기를 모두 숨긴다.
+            # 탈퇴로 target_user가 비면 NOT IN이 전부를 걸러 내므로 null은 뺀다.
             | Q(
                 author_id__in=Report.objects.filter(
-                    reporter=viewer, target_type=Report.TargetType.USER
-                ).values("target_id")
+                    reporter=viewer, target_user__isnull=False
+                ).values("target_user_id")
             )
         )
         return self.filter(author=viewer) | others

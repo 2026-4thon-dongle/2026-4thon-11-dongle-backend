@@ -67,7 +67,8 @@ class ReportCreateView(APIView):
         description=(
             "일기, 사용자, 편지를 신고한다. 편지(`target_type=letter`)는 내가 받아서 도착한 "
             "편지만 신고할 수 있고, 신고 대상 사용자는 보낸 사람이다.\n\n"
-            "- 신고한 일기, 신고한 사용자의 일기는 그 뒤로 내 피드에 보이지 않는다.\n"
+            "- 무엇을 신고하든 그 작성자(편지는 보낸 사람)의 일기는 "
+            "그 뒤로 내 피드에 보이지 않는다.\n"
             f"- 한 일기가 신고 {HIDE_THRESHOLD}건을 넘으면 모두에게서 숨겨진다.\n"
             "- `reason=etc`이면 `detail`에 사유를 꼭 적어야 한다.\n"
             "- `block_user=true`이면 신고와 함께 대상 사용자를 차단한다."
