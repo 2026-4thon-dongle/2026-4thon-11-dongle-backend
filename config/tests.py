@@ -64,6 +64,15 @@ class JsonErrorTests(TestCase):
             response = client.get(reverse("region-list"))
         self.assert_error(response, 500, "SERVER_ERROR")
 
+    def test_malformed_json_is_bad_request(self) -> None:
+        for client, url in (
+            (self.api, reverse("diary-create")),
+            (Client(), reverse("auth-email-send")),
+        ):
+            response = client.post(url, '{"body": "x",', content_type="application/json")
+            self.assert_error(response, 400, "BAD_REQUEST")
+            self.assertEqual(response.json()["message"], "요청 형식을 확인해 주세요.")
+
     def test_public_api_ignores_bad_token(self) -> None:
         client = Client(HTTP_AUTHORIZATION="Bearer expired.or.invalid")
         self.assertEqual(client.get(reverse("region-list")).status_code, 200)

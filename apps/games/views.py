@@ -26,10 +26,12 @@ from .serializers import (
     RunStartSerializer,
 )
 from .services import (
+    LetterGameState,
     find_letter,
     finish_run,
     goals,
     letter_state,
+    letter_states,
     progress,
     reduced_total,
     remaining_seconds,
@@ -50,7 +52,9 @@ def _viewer(request: Request) -> User:
     return cast(User, request.user)
 
 
-def _letter_payload(letter: Letter, viewer: User, now: datetime) -> dict[str, Any]:
+def _letter_payload(
+    letter: Letter, viewer: User, now: datetime, state: LetterGameState | None = None
+) -> dict[str, Any]:
     sent = letter.sender_id == viewer.pk
     return {
         "id": letter.id,
@@ -65,7 +69,7 @@ def _letter_payload(letter: Letter, viewer: User, now: datetime) -> dict[str, An
         "duration_minutes": letter.duration_minutes,
         "sent_at": letter.sent_at,
         "arrives_at": letter.arrives_at,
-        "game": vars(letter_state(viewer, letter, now)),
+        "game": vars(state if state is not None else letter_state(viewer, letter, now)),
     }
 
 
@@ -110,13 +114,15 @@ class GameHomeView(APIView):
     )
     def get(self, request: Request) -> Response:
         viewer, now = _viewer(request), timezone.now()
+        letters = list(in_transit_letters(viewer, now))
+        states = letter_states(viewer, letters, now)
         payload = {
             "rules": _rules_payload(),
             "today": _today(viewer, now),
             "progress": progress(viewer),
             "goals": goals(viewer),
             "letters": [
-                _letter_payload(letter, viewer, now) for letter in in_transit_letters(viewer, now)
+                _letter_payload(letter, viewer, now, states[letter.id]) for letter in letters
             ],
         }
         return Response(GameHomeSerializer(payload).data)

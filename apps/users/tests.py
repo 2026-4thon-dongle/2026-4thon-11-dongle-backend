@@ -177,6 +177,11 @@ class SignupTests(AuthTestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data["code"], "NICKNAME_TAKEN")
 
+    def test_blank_nickname_is_invalid_nickname(self) -> None:
+        response = self.signup(self.signup_payload(self.token(), nickname="   "))
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "INVALID_NICKNAME")
+
     def test_nickname_check(self) -> None:
         make_user()
         url = reverse("auth-nickname-check")
@@ -213,6 +218,16 @@ class LoginLogoutTests(AuthTestCase):
         again = self.client.post(reverse("auth-token-refresh"), {"refresh": refresh}, format="json")
         self.assertEqual(again.status_code, 401)
         self.assertEqual(again.data["code"], "TOKEN_NOT_VALID")
+
+    def test_refresh_after_account_deleted_is_401(self) -> None:
+        user = make_user()
+        refresh = str(RefreshToken.for_user(user))
+        user.delete()
+        response = self.client.post(
+            reverse("auth-token-refresh"), {"refresh": refresh}, format="json"
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data["code"], "TOKEN_NOT_VALID")
 
     def test_logout_rejects_other_users_token(self) -> None:
         mine = make_user()
@@ -258,6 +273,11 @@ class MeTests(TestCase):
         self.assertEqual(self.client.patch(url, {"nickname": "가"}).status_code, 400)
         self.assertEqual(self.client.patch(url, {"nickname": "민호"}).status_code, 200)
         self.assertEqual(self.client.patch(url, {"nickname": "새이름"}).data["nickname"], "새이름")
+
+    def test_blank_nickname_change_is_invalid_nickname(self) -> None:
+        response = self.client.patch(reverse("me"), {"nickname": "   "}, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "INVALID_NICKNAME")
 
     def test_region_update_keeps_old_diary_region(self) -> None:
         diary = Diary.objects.create(author=self.user, region=regions()[1], body="x")

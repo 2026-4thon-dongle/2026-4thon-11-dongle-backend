@@ -2,7 +2,7 @@ import random
 from typing import Any, cast
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.utils import timezone
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -95,8 +95,19 @@ class MyDiaryListView(generics.ListAPIView[Diary]):
     serializer_class = DiarySerializer
 
     def get_queryset(self) -> QuerySet[Diary]:
-        return Diary.objects.filter(author_id=self.request.user.pk).select_related(
-            "author", "region", "region__parent"
+        # 일기마다 받은 편지 수를 따로 세지 않도록 목록 쿼리에서 함께 센다 (DIARY-07)
+        arrived_first = Q(
+            conversations__letters__is_first=True,
+            conversations__letters__arrives_at__lte=timezone.now(),
+        )
+        return (
+            Diary.objects.filter(author_id=self.request.user.pk)
+            .select_related("author", "region", "region__parent")
+            .annotate(
+                received_letters_annotated=Count(
+                    "conversations__letters", filter=arrived_first, distinct=True
+                )
+            )
         )
 
 

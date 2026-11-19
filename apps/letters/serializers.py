@@ -1,4 +1,5 @@
 import json
+import math
 from typing import Any
 
 from django.core.files.uploadedfile import UploadedFile
@@ -75,6 +76,11 @@ class LetterWriteSerializer(serializers.Serializer[Any]):
                 scale = float(sticker.get("scale", STICKER_DEFAULT_SCALE))
             except (TypeError, KeyError, ValueError) as exc:
                 raise serializers.ValidationError("스티커 형식이 올바르지 않습니다.") from exc
+            # code가 리스트·객체면 set 검사에서 TypeError가 나고, nan·inf는 JSON으로 저장할 수 없다
+            if not isinstance(code, str) or not all(
+                math.isfinite(number) for number in (x, y, rotation, scale)
+            ):
+                raise serializers.ValidationError("스티커 형식이 올바르지 않습니다.")
             if code not in STICKER_CODES or not (0 <= x <= 1 and 0 <= y <= 1):
                 raise serializers.ValidationError("스티커 형식이 올바르지 않습니다.")
             if not (STICKER_SCALE_MIN <= scale <= STICKER_SCALE_MAX):

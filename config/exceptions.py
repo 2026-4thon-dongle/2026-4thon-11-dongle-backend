@@ -6,11 +6,12 @@ from django.core.exceptions import RequestDataTooBig
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.views import defaults
 from rest_framework import status
-from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.exceptions import APIException, ParseError, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
 NOT_FOUND_MESSAGE = "요청한 대상을 찾을 수 없습니다."
+BAD_REQUEST_MESSAGE = "요청 형식을 확인해 주세요."
 
 _CODE_BY_STATUS = {
     status.HTTP_403_FORBIDDEN: "permission_denied",
@@ -48,6 +49,9 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
             "message": "입력값을 확인해 주세요.",
             "errors": response.data,
         }
+    elif isinstance(exc, ParseError):
+        # JSON으로 읽을 수 없는 본문. 파서의 영어 상세 문구는 내보내지 않는다 (api/common.md)
+        response.data = {"code": "BAD_REQUEST", "message": BAD_REQUEST_MESSAGE}
     elif isinstance(exc, Http404):
         # get_object_or_404의 영어 문구("No Diary matches ...")를 그대로 내보내지 않는다
         response.data = {"code": "NOT_FOUND", "message": NOT_FOUND_MESSAGE}
@@ -84,7 +88,7 @@ def bad_request(request: HttpRequest, exception: Exception) -> HttpResponse:
             "요청이 너무 큽니다.",
             status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
         )
-    return _error("BAD_REQUEST", "요청 형식을 확인해 주세요.", status.HTTP_400_BAD_REQUEST)
+    return _error("BAD_REQUEST", BAD_REQUEST_MESSAGE, status.HTTP_400_BAD_REQUEST)
 
 
 def page_not_found(request: HttpRequest, exception: Exception) -> HttpResponse:

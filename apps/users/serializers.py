@@ -4,6 +4,8 @@ from django.db.models import Q
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers, status
+from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 from apps.regions.models import Region
 from apps.regions.serializers import RegionSerializer
@@ -99,7 +101,10 @@ class TermsSerializer(serializers.Serializer[Any]):
 
 class SignupSerializer(RegionSelectionSerializer):
     signup_token = serializers.CharField(help_text="인증 코드 확인(purpose=signup)에서 받은 토큰")
-    nickname = serializers.CharField(help_text="2~10자 닉네임. 앞뒤 공백은 지운다.")
+    # 빈 값도 validate_nickname으로 보내 INVALID_NICKNAME으로 거절한다
+    nickname = serializers.CharField(
+        allow_blank=True, help_text="2~10자 닉네임. 앞뒤 공백은 지운다."
+    )
     terms = TermsSerializer(help_text="약관 동의 여부")
 
     def validate_nickname(self, value: str) -> str:
@@ -187,6 +192,16 @@ class LogoutSerializer(serializers.Serializer[Any]):
     refresh = serializers.CharField(help_text="폐기할 refresh 토큰")
 
 
+class SafeTokenRefreshSerializer(TokenRefreshSerializer):
+    """탈퇴로 사용자가 없어진 refresh 토큰도 500이 아니라 401 TOKEN_NOT_VALID로 거절한다."""
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, str]:
+        try:
+            return super().validate(attrs)
+        except User.DoesNotExist as exc:
+            raise InvalidToken("탈퇴했거나 없는 계정의 토큰입니다.") from exc
+
+
 class MeStatsSerializer(serializers.Serializer[Any]):
     diary_count = serializers.IntegerField(help_text="쓴 일기 수")
     letter_count = serializers.IntegerField(
@@ -222,7 +237,8 @@ class MeSerializer(UserSerializer):
 
 
 class NicknameUpdateSerializer(serializers.Serializer[Any]):
-    nickname = serializers.CharField(help_text="새 닉네임 (2~10자)")
+    # 빈 값도 validate_nickname으로 보내 INVALID_NICKNAME으로 거절한다
+    nickname = serializers.CharField(allow_blank=True, help_text="새 닉네임 (2~10자)")
 
 
 class UserSettingsSerializer(serializers.ModelSerializer[User]):

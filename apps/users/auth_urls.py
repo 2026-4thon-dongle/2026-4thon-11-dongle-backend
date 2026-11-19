@@ -1,13 +1,20 @@
 from django.urls import path
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from config.schema import error_response
 
+from .serializers import SafeTokenRefreshSerializer
 from .views import EmailSendView, EmailVerifyView, LogoutView, NicknameCheckView, SignupView
 
-# simplejwt 기본 뷰라서 Swagger 설명만 여기서 붙인다.
+
+class SafeTokenRefreshView(TokenRefreshView):
+    """탈퇴한 계정의 refresh 토큰을 401로 거절하는 재발급 뷰."""
+
+    serializer_class = SafeTokenRefreshSerializer
+
+
+# simplejwt 기본 뷰를 감싼 것이라 Swagger 설명만 여기서 붙인다.
 DocumentedTokenRefreshView = extend_schema_view(
     post=extend_schema(
         tags=["인증"],
@@ -18,14 +25,15 @@ DocumentedTokenRefreshView = extend_schema_view(
             "응답의 `refresh`로 저장된 값을 바꿔야 한다."
         ),
         responses={
-            200: TokenRefreshSerializer,
+            200: SafeTokenRefreshSerializer,
             400: error_response("`VALIDATION_ERROR`: refresh 값이 없음"),
             401: error_response(
-                "`TOKEN_NOT_VALID`: 만료·폐기된 refresh 토큰. 다시 로그인해야 한다"
+                "`TOKEN_NOT_VALID`: 만료·폐기된 refresh 토큰이거나 탈퇴한 계정. "
+                "다시 로그인해야 한다"
             ),
         },
     )
-)(TokenRefreshView)
+)(SafeTokenRefreshView)
 
 urlpatterns = [
     path("email/send/", EmailSendView.as_view(), name="auth-email-send"),
