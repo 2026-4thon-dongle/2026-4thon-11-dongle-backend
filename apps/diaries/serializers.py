@@ -58,6 +58,10 @@ class DiarySerializer(serializers.ModelSerializer[Diary]):
         }
 
     def get_received_letter_count(self, diary: Diary) -> int:
+        # 내 일기 목록은 queryset에서 미리 센 값을 쓴다.
+        annotated = getattr(diary, "received_letters_annotated", None)
+        if annotated is not None:
+            return int(annotated)
         # letters가 diaries를 쓰므로 순환 import를 피해 여기서 불러온다.
         from apps.letters.models import Letter
 
