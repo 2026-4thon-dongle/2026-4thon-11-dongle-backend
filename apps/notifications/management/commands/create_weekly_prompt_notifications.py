@@ -36,6 +36,8 @@ class Command(BaseCommand):
                 type=Notification.Type.PROMPT,
                 title="이번 주 글감이 도착했어요",
                 body=prompt.text,
+                # 알림을 누르면 이 글감으로 6-1 일기 쓰기를 연다 (api/notifications.md)
+                target_id=prompt.id,
             )
             for user in users
         )
