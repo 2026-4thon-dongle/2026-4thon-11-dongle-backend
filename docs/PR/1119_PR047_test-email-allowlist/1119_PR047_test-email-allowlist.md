@@ -14,7 +14,12 @@
 
 ## 변경 사항
 
-작성 중
+| 구분 | 파일/모듈 | 내용 |
+|---|---|---|
+| 설정 | `config/settings/base.py`, `.env.example` | `EXTRA_ALLOWED_EMAILS`(쉼표로 구분, 소문자로 저장, 기본 빈 목록) |
+| 인증 | `apps/users/verification.py`, `apps/users/serializers.py` | `is_allowed_email`: 학교 메일이거나 `EXTRA_ALLOWED_EMAILS`에 있으면 통과. `SchoolEmailField`(코드 발송·확인)가 이것을 쓴다 |
+| 테스트 | `apps/users/tests.py` | `ExtraAllowedEmailTests` 3개: 목록 주소(대문자 입력)로 가입·로그인, 목록에 없는 Gmail 400, 목록이 비면 400 |
+| 문서 | `README.md` | 「실제 메일 발송」·「홈서버 배포」에 `EXTRA_ALLOWED_EMAILS` 설명 |
 
 ## 설계·결정 반영
 
@@ -26,15 +31,22 @@
 
 ## 테스트
 
-작성 중
+- `python manage.py test`: sqlite 195개 통과, PostgreSQL 17(docker 임시 컨테이너) 195개 통과.
+- 이 브랜치에 지금 `main`(`e4e1c31`, 김민호 님 새 편지 탭 되돌리기)을 합친 임시 코드로 sqlite 194개 통과(되돌리기에서 테스트 1개가 빠짐).
+- `manage.py check`, `ruff format --check .`, `ruff check .`, `mypy .` 통과.
+- 생략: 실제 Gmail 주소로 발송. 배포 뒤 배포 서버에서 확인한다.
+- 테스트 데이터·계정 변경 없음(report 갱신 없음).
 
 ## 리뷰어가 볼 곳
 
-작성 중
+- 예외 주소는 학교 이름이 없어 `GET /api/users/me/`의 `school_name`이 `null`이다. 프론트는 이때 「인증 완료」만 보여 준다.
+- 예외 주소는 시연 주소(`DEMO_EMAIL_DOMAINS`)가 아니라서 실제 SMTP로 간다.
+- 프론트도 `ac.kr`만 통과시키므로 프론트 레포에서 같은 주소를 예외로 고쳐야 화면에서 쓸 수 있다.
 
 ## 배포·마이그레이션 메모
 
-작성 중
+- 마이그레이션 없음.
+- 배포 서버 환경변수 `EXTRA_ALLOWED_EMAILS`에 시연용 주소 두 개를 넣는다. 넣지 않으면 동작이 바뀌지 않는다.
 
 ## 관련 문서
 
