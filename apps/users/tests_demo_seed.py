@@ -43,8 +43,7 @@ class SeedDemoTests(TestCase):
         self.assertEqual(self.counts()[:3], (5, 10, 14))
         hero = client_for(demo("demo1"))
         new = hero.get(reverse("mailbox-new")).json()
-        received = [i for i in new["results"] if i["direction"] == "received"]
-        self.assertEqual(len(received), 1)
+        self.assertEqual(len(new["results"]), 1)
         in_transit = hero.get(reverse("mailbox-in-transit")).json()
         self.assertGreaterEqual(len(in_transit["results"]), 1)
         # 우표 5개 이상이라 「밤하늘」 편지지와 스티커가 열려 있다

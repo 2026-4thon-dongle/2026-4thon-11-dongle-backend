@@ -43,19 +43,12 @@ class DiaryBriefSerializer(serializers.Serializer[Any]):
 
 class NewLetterSerializer(serializers.Serializer[Any]):
     id = serializers.IntegerField()
-    direction = _direction()
     sender = PartnerSerializer()
-    recipient = PartnerSerializer(help_text="받는 사람. received면 나")
     from_region = RegionWithSidoSerializer()
-    diary = DiaryBriefSerializer(
-        allow_null=True,
-        help_text="편지가 오간 일기. received 첫 편지면 내 일기. 지웠으면 null",
-    )
+    diary = DiaryBriefSerializer(allow_null=True, help_text="답장 대상인 내 일기. 지웠으면 null")
     duration_minutes = serializers.IntegerField()
-    arrived_at = serializers.DateTimeField(
-        help_text="도착 시각. sent는 도착 전이면 도착 예정 시각(미래)"
-    )
-    is_read = serializers.BooleanField(help_text="received만 의미가 있다. sent는 늘 true")
+    arrived_at = serializers.DateTimeField()
+    is_read = serializers.BooleanField()
     stamp = StampBriefSerializer()
 
 

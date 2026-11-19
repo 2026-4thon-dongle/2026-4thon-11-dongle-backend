@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, cast
 
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import F, Q
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import generics, status
@@ -31,7 +31,6 @@ from .mailbox import (
     penpals,
     preview,
     round_trips_by_partner,
-    sent_letters,
 )
 from .mailbox_serializers import (
     ArchiveItemSerializer,
@@ -124,11 +123,8 @@ class NewLettersView(MailboxListView):
         summary="새 편지 탭",
         description=(
             "나에게 도착한 첫 편지 중 아직 답장하지 않았고 넘기지 않은 편지 (5-1, MAIL-01).\n\n"
-            "- `sido`가 없으면(「전체」) 내가 보낸 편지도 모두 함께 준다. "
-            "`direction`으로 구분하고, 보낸 편지는 도착 전이어도 나온다.\n"
-            "- `sido`: 보낸 사람 출발 지역의 시·도 id로 좁힌다. 이때는 받은 편지만 준다.\n"
-            "- `ordering`: latest(기본, 도착(예정) 최신순) / oldest / "
-            "unread(안 읽은 받은 편지 먼저)."
+            "- `sido`: 보낸 사람 출발 지역의 시·도 id로 좁힌다.\n"
+            "- `ordering`: latest(기본, 도착 최신순) / oldest / unread(안 읽은 것 먼저)."
         ),
         parameters=[
             OpenApiParameter("sido", int, required=False, description="시·도 id"),
@@ -149,31 +145,18 @@ class NewLettersView(MailboxListView):
             if sido is None:
                 raise ApiError("VALIDATION_ERROR", "sido 값을 확인해 주세요.")
             letters = letters.filter(Q(from_region__parent_id=sido) | Q(from_region_id=sido))
-        else:
-            letters = letters | sent_letters(viewer)
-        letters = letters.select_related(
-            "sender__residence__parent", "recipient__residence__parent"
-        )
-        # 보낸 편지의 읽음 여부가 정렬로 새지 않게, 안 읽은 받은 편지만 앞으로 뺀다.
-        unread_received = Case(
-            When(recipient=viewer, read_at__isnull=True, then=Value(0)),
-            default=Value(1),
-            output_field=IntegerField(),
-        )
         ordering = request.query_params.get("ordering", "latest")
         orders: dict[str, list[Any]] = {
             "latest": ["-arrives_at", "-id"],
             "oldest": ["arrives_at", "id"],
-            "unread": [unread_received, "-arrives_at", "-id"],
+            "unread": [F("read_at").asc(nulls_first=True), "-arrives_at", "-id"],
         }
         if ordering not in orders:
             raise ApiError("VALIDATION_ERROR", "ordering 값을 확인해 주세요.")
         items = [
             {
                 "id": letter.id,
-                "direction": "sent" if letter.sender_id == viewer.pk else "received",
                 "sender": _partner(letter.sender),
-                "recipient": _partner(letter.recipient),
                 "from_region": _region(letter.from_region),
                 "diary": {
                     "id": letter.conversation.diary.id,
@@ -183,8 +166,7 @@ class NewLettersView(MailboxListView):
                 else None,
                 "duration_minutes": letter.duration_minutes,
                 "arrived_at": letter.arrives_at,
-                # 읽음 표시는 보낸 사람에게 보여 주지 않으므로 보낸 편지는 늘 true다.
-                "is_read": letter.sender_id == viewer.pk or letter.read_at is not None,
+                "is_read": letter.read_at is not None,
                 "stamp": _stamp(letter),
             }
             for letter in letters.order_by(*orders[ordering])
