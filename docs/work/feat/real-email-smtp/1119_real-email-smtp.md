@@ -5,7 +5,7 @@
 - 브랜치: `feat/real-email-smtp`
 - 기준 커밋: `22fbd69`
 - 상태: 진행 중
-- 관련 PR: 미정
+- 관련 PR: [#44](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/44)
 
 ## 지금 작업 내용
 
