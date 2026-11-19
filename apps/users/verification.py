@@ -7,7 +7,8 @@ from smtplib import SMTPException
 
 from django.conf import settings
 from django.core import signing
-from django.core.mail import send_mail
+from django.core.mail import get_connection, send_mail
+from django.core.mail.backends.base import BaseEmailBackend
 from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare, salted_hmac
@@ -52,6 +53,27 @@ def school_name_of(email: str) -> str | None:
     return None
 
 
+def mail_connection_for(email: str) -> BaseEmailBackend | None:
+    """시연 주소(DEMO_EMAIL_DOMAINS)는 실제 SMTP를 켜도 DEMO_EMAIL_HOST(Mailpit)로 보낸다.
+
+    None이면 send_mail이 기본 메일 설정을 쓴다.
+    """
+    host = settings.DEMO_EMAIL_HOST
+    domain = email.rsplit("@", 1)[-1].lower()
+    if not host or domain not in settings.DEMO_EMAIL_DOMAINS:
+        return None
+    return get_connection(
+        "django.core.mail.backends.smtp.EmailBackend",
+        host=host,
+        port=settings.DEMO_EMAIL_PORT,
+        username="",
+        password="",
+        use_tls=False,
+        use_ssl=False,
+        timeout=10,
+    )
+
+
 def _hash_code(email: str, purpose: str, code: str) -> str:
     return salted_hmac("dongle.email-code", f"{email}:{purpose}:{code}").hexdigest()
 
@@ -85,6 +107,7 @@ def send_code(email: str, purpose: str) -> EmailVerification:
             message=f"인증 코드는 {code} 입니다. 5분 안에 입력해 주세요.",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
+            connection=mail_connection_for(email),
         )
     except (SMTPException, OSError) as exc:
         verification.delete()

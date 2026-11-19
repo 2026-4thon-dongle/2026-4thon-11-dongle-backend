@@ -18,7 +18,8 @@ services:
       retries: 10
       start_period: 20s
 
-  # 가상 메일함. 인증 메일이 여기 쌓이고 웹 화면(8025)에서 코드를 본다. SMTP(1025)는 api에서만 쓴다.
+  # 가상 메일함. EMAIL_HOST를 넣지 않았을 때 인증 메일이 여기 쌓이고 웹 화면(8025)에서 코드를 본다.
+  # 실제 SMTP로 바꾸면 메일은 사용자 메일함으로 가고 여기는 비어 있다.
   mailpit:
     image: axllent/mailpit:v1.21
     restart: unless-stopped
@@ -55,8 +56,12 @@ services:
         required: false
     environment:
       DATABASE_URL: postgres://dongle:${POSTGRES_PASSWORD}@db:5432/dongle
-      EMAIL_HOST: mailpit
-      EMAIL_PORT: "1025"
+      # 실제 SMTP를 쓰려면 플랫폼 환경변수에 EMAIL_HOST·EMAIL_PORT와 계정 값을 넣는다. 없으면 Mailpit.
+      EMAIL_HOST: ${EMAIL_HOST:-mailpit}
+      EMAIL_PORT: ${EMAIL_PORT:-1025}
+      # 실제 SMTP를 켜도 시연 주소(@dongle-demo.ac.kr 등, 실제로 없는 메일)는 Mailpit으로 보낸다.
+      DEMO_EMAIL_HOST: mailpit
+      DEMO_EMAIL_PORT: "1025"
       MEDIA_ROOT: /app/media
       SERVE_MEDIA: "true"
     volumes:
@@ -80,8 +85,9 @@ services:
         required: false
     environment:
       DATABASE_URL: postgres://dongle:${POSTGRES_PASSWORD}@db:5432/dongle
-      EMAIL_HOST: mailpit
-      EMAIL_PORT: "1025"
+      # 실제 SMTP를 쓰려면 플랫폼 환경변수에 EMAIL_HOST·EMAIL_PORT와 계정 값을 넣는다. 없으면 Mailpit.
+      EMAIL_HOST: ${EMAIL_HOST:-mailpit}
+      EMAIL_PORT: ${EMAIL_PORT:-1025}
     healthcheck:
       disable: true
     command:
@@ -111,8 +117,9 @@ services:
         required: false
     environment:
       DATABASE_URL: postgres://dongle:${POSTGRES_PASSWORD}@db:5432/dongle
-      EMAIL_HOST: mailpit
-      EMAIL_PORT: "1025"
+      # 실제 SMTP를 쓰려면 플랫폼 환경변수에 EMAIL_HOST·EMAIL_PORT와 계정 값을 넣는다. 없으면 Mailpit.
+      EMAIL_HOST: ${EMAIL_HOST:-mailpit}
+      EMAIL_PORT: ${EMAIL_PORT:-1025}
     healthcheck:
       disable: true
     command:

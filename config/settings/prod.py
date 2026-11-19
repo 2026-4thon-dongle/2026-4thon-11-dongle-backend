@@ -26,7 +26,8 @@ CSRF_COOKIE_SECURE = True
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W008", "security.W021"]
 SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=86400)
 
-# 기본은 가상 메일함 Mailpit(인증 없음, TLS 없음, 1025). 실제 SMTP를 쓰면 아래 값을 모두 넣는다.
+# 인증 코드를 사용자 메일함으로 보내려면 실제 SMTP 값을 모두 넣는다(README 「실제 메일 발송」).
+# compose에서 EMAIL_HOST를 넣지 않으면 가상 메일함 Mailpit(인증 없음, TLS 없음, 1025)으로 간다.
 EMAIL_HOST = env("EMAIL_HOST")
 EMAIL_PORT = env.int("EMAIL_PORT", default=1025)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
