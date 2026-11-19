@@ -101,7 +101,10 @@ class TermsSerializer(serializers.Serializer[Any]):
 
 class SignupSerializer(RegionSelectionSerializer):
     signup_token = serializers.CharField(help_text="인증 코드 확인(purpose=signup)에서 받은 토큰")
-    nickname = serializers.CharField(help_text="2~10자 닉네임. 앞뒤 공백은 지운다.")
+    # 빈 값도 validate_nickname으로 보내 INVALID_NICKNAME으로 거절한다
+    nickname = serializers.CharField(
+        allow_blank=True, help_text="2~10자 닉네임. 앞뒤 공백은 지운다."
+    )
     terms = TermsSerializer(help_text="약관 동의 여부")
 
     def validate_nickname(self, value: str) -> str:
@@ -234,7 +237,8 @@ class MeSerializer(UserSerializer):
 
 
 class NicknameUpdateSerializer(serializers.Serializer[Any]):
-    nickname = serializers.CharField(help_text="새 닉네임 (2~10자)")
+    # 빈 값도 validate_nickname으로 보내 INVALID_NICKNAME으로 거절한다
+    nickname = serializers.CharField(allow_blank=True, help_text="새 닉네임 (2~10자)")
 
 
 class UserSettingsSerializer(serializers.ModelSerializer[User]):
