@@ -169,6 +169,35 @@ class DemoMailRoutingTests(AuthTestCase):
         self.assertEqual(mail.outbox[-1].to, [NORMALIZED_EMAIL])
 
 
+@override_settings(EXTRA_ALLOWED_EMAILS=["demo.sender@gmail.com"])
+class ExtraAllowedEmailTests(AuthTestCase):
+    """EXTRA_ALLOWED_EMAILS에 있는 주소는 학교 메일이 아니어도 가입·로그인할 수 있다."""
+
+    def test_listed_address_can_sign_up_and_log_in(self) -> None:
+        email = "Demo.Sender@Gmail.com"
+        self.assertEqual(self.send(email).status_code, 200)
+        token = self.verify(self.last_code(), email=email).data["signup_token"]
+        response = self.client.post(
+            reverse("auth-signup"), self.signup_payload(str(token)), format="json"
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(User.objects.filter(email="demo.sender@gmail.com").exists())
+
+        self.assertEqual(self.send(email, purpose="login").status_code, 200)
+        response = self.verify(self.last_code(), email=email, purpose="login")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIn("access", response.data)
+
+    def test_unlisted_non_school_address_is_rejected(self) -> None:
+        response = self.send("someone.else@gmail.com")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "INVALID_SCHOOL_EMAIL")
+
+    @override_settings(EXTRA_ALLOWED_EMAILS=[])
+    def test_only_school_email_without_list(self) -> None:
+        self.assertEqual(self.send("demo.sender@gmail.com").data["code"], "INVALID_SCHOOL_EMAIL")
+
+
 class SignupTests(AuthTestCase):
     def token(self) -> str:
         self.send()
