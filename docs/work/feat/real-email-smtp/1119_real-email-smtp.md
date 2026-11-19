@@ -4,7 +4,7 @@
 - 작성자: 서재민 (Claude)
 - 브랜치: `feat/real-email-smtp`
 - 기준 커밋: `22fbd69`
-- 상태: 진행 중
+- 상태: 리뷰 중
 - 관련 PR: [#44](https://github.com/2026-4thon-dongle/2026-4thon-11-dongle-backend/pull/44)
 
 ## 지금 작업 내용
@@ -51,6 +51,7 @@
 | 날짜 | 내용 |
 |---|---|
 | 2026-11-19 | 작성. 사용자 결정: 실제 SMTP를 켜되 시연 주소만 Mailpit으로 보낸다 |
+| 2026-11-19 | PR41 커밋 3개 cherry-pick(충돌 없음), `DEMO_EMAIL_*` 설정·compose·`mail_connection_for`·테스트 5개·README. sqlite·PostgreSQL 17 테스트 192개, check·ruff·mypy 통과 |
 
 ## 결정·변경 사항과 남은 일
 
