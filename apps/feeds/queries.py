@@ -34,10 +34,9 @@ def _with_sent_flag(diaries: QuerySet[Diary], viewer: User) -> QuerySet[Diary]:
 
 
 def _feed_base(viewer: User) -> QuerySet[Diary]:
-    """viewer가 볼 수 있는 남의 일기, 최신순."""
+    """viewer가 볼 수 있는 일기(내 일기 포함), 최신순. 내 일기는 can_reply가 false다."""
     diaries = (
         Diary.objects.visible_to(viewer)
-        .exclude(author=viewer)
         .select_related("author", "region__parent")
         .order_by("-created_at", "-id")
     )
@@ -50,11 +49,14 @@ def hometown_feed(viewer: User, region: Region | None = None) -> QuerySet[Diary]
 
 
 def others_feed(viewer: User, sido: Region | None = None) -> QuerySet[Diary]:
-    """본가 지역에 속하지 않고, 내 거주 구에서 쓰지 않은 일기(가정)."""
+    """본가 지역에 속하지 않고, 내 거주 구에서 쓰지 않은 일기(가정).
+
+    내 일기는 거주 구에서 썼어도 넣는다(게시판에 내 글도 보이게, QA 요청).
+    """
     hometowns = list(viewer.hometowns.select_related("parent"))
     feed = _feed_base(viewer).exclude(hometown_scope(hometowns))
     if viewer.residence_id is not None:
-        feed = feed.exclude(region_id=viewer.residence_id)
+        feed = feed.exclude(Q(region_id=viewer.residence_id) & ~Q(author=viewer))
     if sido is not None:
         feed = feed.filter(region_scope(sido))
     return feed

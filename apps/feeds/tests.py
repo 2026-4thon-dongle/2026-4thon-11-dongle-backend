@@ -99,6 +99,14 @@ class HometownSummaryTests(FeedTestCase):
         response = self.api.get(reverse("feed-hometown-summary"))
         self.assertEqual(response.data["new_count"], 1)
 
+    def test_own_diary_in_hometown_is_not_new(self) -> None:
+        self.viewer.hometowns.add(region("서울"))
+        response = self.api.get(reverse("feed-hometown"))
+        self.assertIn(self.d_own.id, ids(response))
+        response = self.api.get(reverse("feed-hometown-summary"))
+        # 서울이 본가가 되어 종로·이웃 일기는 새 일기로 세지만 내 일기는 세지 않는다
+        self.assertEqual(response.data["new_count"], 4)
+
     def test_old_diaries_are_not_new(self) -> None:
         Diary.objects.update(created_at=timezone.now() - timedelta(days=2))
         response = self.api.get(reverse("feed-hometown-summary"))
@@ -109,7 +117,15 @@ class OthersFeedTests(FeedTestCase):
     def test_excludes_hometown_and_residence(self) -> None:
         response = self.api.get(reverse("feed-others"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(ids(response), [self.d_jongno.id, self.d_suwon.id])
+        self.assertEqual(ids(response), [self.d_own.id, self.d_jongno.id, self.d_suwon.id])
+
+    def test_own_diary_is_shown_without_reply(self) -> None:
+        response = self.api.get(reverse("feed-others"))
+        by_id = {item["id"]: item for item in response.data["results"]}
+        self.assertNotIn(self.d_neighbor.id, by_id)
+        self.assertFalse(by_id[self.d_own.id]["can_reply"])
+        response = self.api.get(reverse("feed-others"), {"sido": region("서울").id})
+        self.assertEqual(ids(response), [self.d_own.id, self.d_jongno.id])
 
     def test_sido_filter(self) -> None:
         response = self.api.get(reverse("feed-others"), {"sido": region("경기").id})

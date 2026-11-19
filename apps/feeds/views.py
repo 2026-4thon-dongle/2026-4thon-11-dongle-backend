@@ -47,8 +47,8 @@ class HometownFeedView(generics.ListAPIView[Diary]):
         summary="고향 ↔ 타지 피드",
         description=(
             "작성 지역이 내 본가 지역에 속하는 일기를 최신순으로 준다 (3-1, FEED-01). 본가가 "
-            "시·군이면 그 시·군, 광역시·세종이면 그 시·도 안에서 쓴 일기다. 내 일기, 나만 보기, "
-            "차단·신고·숨김 일기는 빠진다."
+            "시·군이면 그 시·군, 광역시·세종이면 그 시·도 안에서 쓴 일기다. 남의 나만 보기, "
+            "차단·신고·숨김 일기는 빠진다. 내 일기도 나오며 `can_reply`는 false다."
         ),
         parameters=[
             OpenApiParameter("region", int, required=False, description="본가 지역 id (칩 필터)"),
@@ -79,7 +79,8 @@ class HometownSummaryView(APIView):
         summary="고향 피드 요약",
         description=(
             "홈 배너 「새 일기 N편이 도착했어요」와 본가 칩 목록을 준다 (3-1). `new_count`는 "
-            "마지막으로 피드를 확인한 시각 이후의 고향 일기 수다. 처음이면 오늘 0시 이후."
+            "마지막으로 피드를 확인한 시각 이후의 고향 일기 수다(내 일기 제외). "
+            "처음이면 오늘 0시 이후."
         ),
         responses={200: FeedSummarySerializer},
     )
@@ -91,7 +92,10 @@ class HometownSummaryView(APIView):
         return Response(
             {
                 "hometowns": RegionWithSidoSerializer(hometowns, many=True).data,
-                "new_count": hometown_feed(viewer).filter(created_at__gt=since).count(),
+                "new_count": hometown_feed(viewer)
+                .exclude(author=viewer)
+                .filter(created_at__gt=since)
+                .count(),
                 "last_seen_at": seen.seen_at if seen else None,
             }
         )
@@ -120,7 +124,7 @@ class OthersFeedView(generics.ListAPIView[Diary]):
         summary="전체 타지 피드",
         description=(
             "내 본가 지역에 속하지 않고 내 거주 구에서 쓰지 않은 일기를 최신순으로 준다 "
-            "(3-2, FEED-02)."
+            "(3-2, FEED-02). 내 일기는 거주 구에서 썼어도 나오며 `can_reply`는 false다."
         ),
         parameters=[
             OpenApiParameter("sido", int, required=False, description="시·도 id (칩 필터)")
