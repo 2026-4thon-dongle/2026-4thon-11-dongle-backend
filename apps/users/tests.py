@@ -214,6 +214,16 @@ class LoginLogoutTests(AuthTestCase):
         self.assertEqual(again.status_code, 401)
         self.assertEqual(again.data["code"], "TOKEN_NOT_VALID")
 
+    def test_refresh_after_account_deleted_is_401(self) -> None:
+        user = make_user()
+        refresh = str(RefreshToken.for_user(user))
+        user.delete()
+        response = self.client.post(
+            reverse("auth-token-refresh"), {"refresh": refresh}, format="json"
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data["code"], "TOKEN_NOT_VALID")
+
     def test_logout_rejects_other_users_token(self) -> None:
         mine = make_user()
         other = make_user(email="b@skuniv.ac.kr", nickname="다른사람")

@@ -4,6 +4,8 @@ from django.db.models import Q
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers, status
+from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 from apps.regions.models import Region
 from apps.regions.serializers import RegionSerializer
@@ -185,6 +187,16 @@ class NicknameCheckSerializer(serializers.Serializer[Any]):
 
 class LogoutSerializer(serializers.Serializer[Any]):
     refresh = serializers.CharField(help_text="폐기할 refresh 토큰")
+
+
+class SafeTokenRefreshSerializer(TokenRefreshSerializer):
+    """탈퇴로 사용자가 없어진 refresh 토큰도 500이 아니라 401 TOKEN_NOT_VALID로 거절한다."""
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, str]:
+        try:
+            return super().validate(attrs)
+        except User.DoesNotExist as exc:
+            raise InvalidToken("탈퇴했거나 없는 계정의 토큰입니다.") from exc
 
 
 class MeStatsSerializer(serializers.Serializer[Any]):
