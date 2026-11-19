@@ -15,7 +15,7 @@ from apps.stamps.services import FIRST_DIARY
 from config.exceptions import ApiError
 
 from .models import EmailVerification, User
-from .verification import is_school_email, school_name_of
+from .verification import is_allowed_email, school_name_of
 
 NICKNAME_MIN_LENGTH = 2
 NICKNAME_MAX_LENGTH = 10
@@ -37,7 +37,7 @@ def validate_nickname(value: str, exclude_user_id: int | None = None) -> str:
 class SchoolEmailField(serializers.EmailField):
     def to_internal_value(self, data: Any) -> str:
         email = super().to_internal_value(data).lower()
-        if not is_school_email(email):
+        if not is_allowed_email(email):
             raise ApiError("INVALID_SCHOOL_EMAIL", "학교 메일(ac.kr)만 사용할 수 있습니다.")
         return str(email)
 

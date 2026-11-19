@@ -166,6 +166,12 @@ DEMO_EMAIL_DOMAINS = [
     for domain in env.list("DEMO_EMAIL_DOMAINS", default=["dongle-demo.ac.kr", "guest-demo.ac.kr"])
 ]
 
+# 학교 메일(ac.kr)이 아니어도 가입·로그인을 허용할 주소(실제 메일 발송 시연용). 쉼표로 구분한다.
+# 주소는 저장소에 적지 않고 환경변수로 넣는다.
+EXTRA_ALLOWED_EMAILS = [
+    email.strip().lower() for email in env.list("EXTRA_ALLOWED_EMAILS", default=[]) if email.strip()
+]
+
 # 약관을 고치면 올린다. 동의 시점의 버전을 TermsAgreement에 저장한다.
 TERMS_VERSION = "2026-11-09"
 

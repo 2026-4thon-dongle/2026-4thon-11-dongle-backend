@@ -44,6 +44,11 @@ def is_school_email(email: str) -> bool:
     return SCHOOL_EMAIL_RE.match(email) is not None
 
 
+def is_allowed_email(email: str) -> bool:
+    """학교 메일이거나 EXTRA_ALLOWED_EMAILS(시연용 예외 주소)에 있으면 가입·로그인할 수 있다."""
+    return is_school_email(email) or email.lower() in settings.EXTRA_ALLOWED_EMAILS
+
+
 def school_name_of(email: str) -> str | None:
     """메일 도메인으로 학교 약칭을 찾는다. 하위 도메인도 같은 학교로 본다. 모르면 None."""
     domain = email.rsplit("@", 1)[-1].lower()
