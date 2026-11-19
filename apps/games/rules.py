@@ -6,9 +6,8 @@
 
 from dataclasses import dataclass
 
-from django.conf import settings
-
 from apps.letters.delivery import FAR
+from apps.letters.demo_mode import is_demo_mode
 
 RUN_SECONDS = 30
 LANES = 3
@@ -39,7 +38,7 @@ STAR_RULES = (
 
 def time_unit() -> int:
     """규칙의 「분」이 실제로 몇 초인지. 데모 모드면 1초."""
-    return 1 if settings.LETTER_DEMO_MODE else 60
+    return 1 if is_demo_mode() else 60
 
 
 def reduce_seconds_for(stars: int) -> int:

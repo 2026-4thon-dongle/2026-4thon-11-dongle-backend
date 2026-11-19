@@ -2,7 +2,7 @@ from typing import Any, cast
 
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -24,6 +24,7 @@ from config.exceptions import ApiError
 from config.params import parse_id
 from config.schema import error_response
 
+from .demo_mode import is_demo_mode, set_demo_mode
 from .serializers import (
     EstimateSerializer,
     LetterSentSerializer,
@@ -235,3 +236,36 @@ class LetterSendView(APIView):
             ],
         }
         return Response(payload, status=status.HTTP_201_CREATED)
+
+
+class DemoModeSerializer(serializers.Serializer[Any]):
+    enabled = serializers.BooleanField(
+        help_text="true면 새 편지가 1분 뒤 도착하고, 배달 게임 단축은 초 단위가 된다."
+    )
+
+
+@extend_schema(tags=["편지"])
+class DemoModeView(APIView):
+    @extend_schema(
+        summary="데모 모드 조회",
+        description="편지 1분 배송(데모 모드)이 켜져 있는지 돌려준다. 시연용 임시 기능이다.",
+        responses={200: DemoModeSerializer},
+    )
+    def get(self, request: Request) -> Response:
+        return Response({"enabled": is_demo_mode()})
+
+    @extend_schema(
+        summary="데모 모드 변경",
+        description="데모 모드를 켜거나 끈다. 이미 보낸 편지의 도착 시각은 바뀌지 않는다. "
+        "시연용 임시 기능이라 로그인한 누구나 바꿀 수 있다.",
+        request=DemoModeSerializer,
+        responses={
+            200: DemoModeSerializer,
+            400: error_response("`VALIDATION_ERROR`: boolean이 아닌 값"),
+        },
+    )
+    def put(self, request: Request) -> Response:
+        serializer = DemoModeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        set_demo_mode(serializer.validated_data["enabled"])
+        return Response({"enabled": is_demo_mode()})
